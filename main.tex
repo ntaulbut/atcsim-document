@@ -159,6 +159,7 @@ Because the solutions for real-world controllers require certification, my solut
 My solution will aim to improve on the areas that are lacking in the existing publicly available solutions.
 
 
+\clearpage
 \subsection{Stakeholders}
 \subsubsection{Air Traffic Control organisations}
 The UK's \acrfull{nats} organisation has a basic air traffic control game on their website for people to test their skills and determine if becoming an air traffic controller is right for them.
@@ -197,15 +198,15 @@ This serves its purpose well.
 \includegraphics[width=0.85\textwidth]{existing_solutions/atcsim1.png}
 \caption{\label{fig:atcsim1}ATC-SIM Gameplay Screen}
 \end{figure}
-The user can issue instructions to aircraft by entering abbreviated text commands into a text box, e.g. "BAW123 C 6" is an instruction for that aircraft ("BAW123") to climb or descend to 6,000ft.
-As seen in Figure \ref{fig:atcsim1}, a list of aircraft under the user's control is on the right-hand side of the screen.
-On the central screen, text next to each aircraft displays their current altitude, heading, and speed.
+The user can issue instructions to aeroplanes by entering abbreviated text commands into a text box, e.g. "BAW123 C 6" is an instruction for that aeroplane ("BAW123") to climb or descend to 6,000ft.
+As seen in Figure \ref{fig:atcsim1}, a list of aeroplanes under the user's control is on the right-hand side of the screen.
+On the central screen, text next to each aeroplane displays their current altitude, heading, and speed.
 A display on the right-hand side shows the current wind speed and direction.
 A background image shows the terrain and areas of water.
 
 The view cannot be panned or zoomed and if the size of the browser window changes, the background moves but the waypoints don't, resulting in a visual mismatch (see Figure \ref{fig:airportinseaatcsim}).
-Only a limited number of waypoints are available for the user to direct the aircraft to.
-There is no visual indication of the approach path, which makes it impossible for the user to accurately guide aircraft in.
+Only a limited number of waypoints are available for the user to direct the aeroplane to.
+There is no visual indication of the approach path, which makes it impossible for the user to accurately guide aeroplanes in.
 Overall this is a reasonable solution for some but will disappoint more knowledgeable users.
 
 \subsubsection{Endless ATC}
@@ -215,59 +216,52 @@ Overall this is a reasonable solution for some but will disappoint more knowledg
 \caption{\label{fig:endlessatc1}Endless ATC}
 \end{figure}
 Endless ATC\footnote{\url{https://startgrid.itch.io/endlessatc}} is a desktop and mobile air traffic control simulator focused on approach control.
-The user can issue headings to aircraft by clicking or tapping on them and then moving their cursor in the direction of the desired heading.
+The user can issue headings to aeroplanes by clicking or tapping on them and then moving their cursor in the direction of the desired heading.
 The view can be panned around with the mouse and zoomed in with the scroll wheel.
 Buttons on the side allow the user to change altitude, speed, and heading, or they can use various keys such as the scroll wheel to quickly change these values.
 Once values have been changed, a button must be pressed to confirm or cancel the instructions.
-A problem is that an instruction is also confirmed when the user clicks away or onto another aircraft, potentially leading to confirming an instruction the user didn't mean to.
-Text next to each aircraft displays their current altitude, heading, and speed.
-A limited number of waypoints are available which aircraft can be directed to by clicking and dragging to them.
+A problem is that an instruction is also confirmed when the user clicks away or onto another aeroplane, potentially leading to confirming an instruction the user didn't mean to.
+Text next to each aeroplane displays their current altitude, heading, and speed.
+A limited number of waypoints are available which aeroplane can be directed to by clicking and dragging to them.
 The coastline is shown with overly simple lines.
-A limited number of customisation options are available, such as changing the aircraft icons.
+A limited number of customisation options are available, such as changing the aeroplane icons.
 Another issue is that the user can only give altitude instructions in increments of thousands of feet, whereas it is very common in reality for controllers to give instructions involving hundreds of feet.
 
 
 \subsection{Features} \label{essentialfeatures}
-\subsubsection{Simulated aircraft}
+\subsubsection{Simulated aeroplanes}
 The aim of my solution is to simulate the role of an air traffic controller, and the user will therefore need some traffic to control.
-Whilst some solutions require other people to 'fly' the aircraft, mine should allow someone to use the simulation without any additional people, since if it did require them it would reduce the flexibility of the use of the simulator to when they could be organised.
+Whilst some solutions require other people to 'fly' the aeroplanes, mine should allow someone to use the simulation without any additional people, since if it did require them it would reduce the flexibility of the use of the simulator to when they could be organised.
 Therefore the air traffic will have to be simulated and computer controlled.
-This will involve repeatedly calculating the aircraft's movement many times a second based on their speed and direction, and other factors such as wind.
-This can be achieved with an algorithm and mathematical calculations which are suited to being run on a computer, allowing many aircraft to be simulated quickly and concurrently.
-The aircraft will need to replicate the real world guidance modes of autopilot systems, such as flying on a heading or on a route between waypoints.
+This will involve repeatedly calculating the aeroplane's movement many times a second based on their speed and direction, and other factors such as wind.
+This can be achieved with an algorithm and mathematical calculations which are suited to being run on a computer, allowing many aeroplanes to be simulated quickly and concurrently.
 
-These aircraft will be abstracted from reality, only simulating the variables that are necessary to appear realistic on a radar screen.
-For example, lift does not have to be simulated --- instead it can just be stated that the aircraft is at a particular altitude.
+These aeroplanes will be abstracted from reality, only simulating the variables that are necessary to appear realistic on a radar screen.
+For example, lift does not have to be simulated --- instead it can just be stated that the aeroplane is at a particular altitude.
 To make them behave realistically however, it is necessary to simulate abstractions of e.g.
-the pitch of the aircraft, because this affects how long it takes for the aircraft to change altitude.
+the pitch of the aeroplane, because this affects how long it takes for the aeroplane to change altitude.
 Because the pitch required to maintain a certain \gls{flightpathangle} changes dependent on factors that would be complicated to simulate, such as lift and speed, I can instead model vertical motion only by the \gls{flightpathangle}, which allows for the same realistic behaviour without having to calculate the actual pitch.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\textwidth]{diagrams/pitchfpa.png}
+\includegraphics[width=0.7\textwidth]{diagrams/pitchfpa.png}
 \caption{\label{fig:pitchfpa}Pitch and FPA}
 \end{figure}
+A simulation of the takeoff procedures of the aeroplane, such as its acceleration on the ground and initial rotation, will not need to be included because the solution is focussed on approach control.
+Aeroplanes landing and flaring can also be largely ignored because below a certain altitude they will not be visible on the radar anyway.
 
-Aircraft should move realistically and to scale, and multiple aircraft should be able to be simulated simultaneously while maintaining performance, ideally 15 or more as this is how many a controller is typically required to control in real life.
+The following success criteria must be met to ensure sufficient realism of the aeroplane simulation as required by the stakeholders:
+\begin{itemize}
+    \item To simulate the manoeuvering characteristics of a typical airliner, it should take a certain amount of time for an aeroplane to change direction and speed
+    \item The aeroplane should take a realistic amount of time to change altitude and heading
+    \item Timescales should always be accurate, independent of the performance of the simulation
+    \item Fifteen or more aeroplane should be able to be simulated simultaneously while maintaining performance, as this is how many a controller is typically required to control in real life
+\end{itemize}
 
-\subsubsection{Wind}
-Controllers often direct aircraft by telling them to fly on a certain heading.
-The heading of an aircraft describes the direction it is pointing in which, largely because of wind, is not necessarily the same as the direction it is travelling in.
-Therefore controllers have to account for this when giving headings so that the aircraft's actual track is in the intended direction.
-This is a big part of the controller's job, so it will be necessary to simulate this.
-The input to this system will be a wind direction and a wind speed, live data for which could be obtained from an internet API.
-
-\subsubsection{Displaying aircraft}
-A representation of the aircraft will need to be shown.
-It will need to show their assigned heading or waypoint, altitude, and speed; their current heading or targeted waypoint, altitude, and speed; and their callsign.
-As with real life radar displays, it should show a trail of dots or other symbols behind the aircraft to illustrate its path and a line in front to show its current direction of travel.
-It should be visually similar to real life for additional realism and immersion.
-This can only be accomplished with a computer because of its unique ability to render custom, moving and changing graphics to display on an output device such as a monitor.
-
-\subsubsection{Giving instructions to aircraft}
-In reality, air traffic controllers instruct aircraft pilots verbally over radio.
-The aircraft in my solution will be simulated, so there will be no pilot to hear and parse an audio instruction, e.g. "Air France 354, descend 5,000 feet, QNH 1018".
-Therefore an alternative method of giving these aircraft instructions will be needed.
-The essential instructions necessary to guide an aircraft to a landing are for it to:
+\subsubsection{Giving instructions to aeroplanes}
+In reality, air traffic controllers instruct aeroplane pilots verbally over radio.
+The aeroplanes in my solution will be simulated, so there will be no pilot to hear and parse an audio instruction, e.g. "Air France 354, descend 5,000 feet, QNH 1018".
+Therefore an alternative method of giving these aeroplanes instructions will be needed.
+The essential instructions necessary to guide an aeroplane to a landing are for it to:
 \begin{itemize}
     \item Fly on a \gls{heading}
     \item Fly to a \gls{waypoint}
@@ -279,6 +273,20 @@ The solution will create an abstraction of the verbal instructions which hides s
 
 The solution should allow the user to give instructions as quickly or quicker than they would be able to verbally in real life.
 To make the experience more fluid, it should also require as few button presses or mouse clicks as possible.
+
+\subsubsection{Wind drift}
+Controllers often direct aeroplanes by telling them to fly on a certain heading.
+The heading of an aeroplane describes the direction it is pointing in which, largely because of wind, is not necessarily the same as the direction it is travelling in.
+Therefore controllers have to account for this when giving headings so that the aeroplane's actual track is in the intended direction.
+This is a big part of the controller's job, so it will be necessary to simulate this.
+The input to this system will be a wind direction and a wind speed, live data for which could be obtained from an internet API.
+
+\subsubsection{Displaying aeroplanes}
+A representation of the aeroplan will need to be shown.
+It will need to show their assigned heading or waypoint, altitude, and speed; their current heading or targeted waypoint, altitude, and speed; and their callsign.
+As with real life radar displays, it should show a trail of dots or other symbols behind the aeroplan to illustrate its path and a line in front to show its current direction of travel.
+It should be visually similar to real life for additional realism and immersion.
+This can only be accomplished with a computer because of its unique ability to render custom, moving and changing graphics to display on an output device such as a monitor.
 
 \subsubsection{Waypoints}
 \begin{figure}[H]
@@ -312,13 +320,14 @@ This will also create a familiar experience which is intuitive.
 A few limitations must be stated to prevent the solution from becoming overly complex and to limit the scope.
 They are as follows:
 \begin{itemize}
-\item{The simulator will only load information such as waypoints and terrain in a small area around the airport --- it will not allow the user to pan around the whole world at once.
-Doing so would require streaming the data in as the user moved around, which would be unnecessarily complex to implement because the user is only controlling aircraft in one geographical area at a time anyway.}
-\item{The simulator will only simulate traffic under \acrfull{ifr}\footnote{\url{https://en.wikipedia.org/wiki/Instrument_flight_rules}} because their behaviour is predictable.
-Aircraft under \acrfull{vfr} are flown by the pilot with reference to visual landmarks which are not simulated.
-This is a fairly major limitation because at some airports \acrshort{vfr} traffic is very common, however the existing solutions researched also have this limitation.}
-\item{Different types of aircraft, e.g. helicopters, will not be simulated because the way they behave is very different to fixed-wing aircraft and in most airports it is not common to see them.
-The maneuvering characteristics used will be an approximation of an average airliner, rather than having different data for different types.}
+    \item The simulator will only load information such as waypoints and terrain in a small area around the airport --- it will not allow the user to pan around the whole world at once.
+    Doing so would require streaming the data in as the user moved around, which would be unnecessarily complex to implement because the user is only controlling aeroplanes in one geographical area at a time anyway.
+    \item The simulator will only simulate traffic under \acrfull{ifr}\footnote{\url{https://en.wikipedia.org/wiki/Instrument_flight_rules}} because their behaviour is predictable.
+    Aeroplanes under \acrfull{vfr} are flown by the pilot with reference to visual landmarks which are not simulated.
+    This is a fairly major limitation because at some airports \acrshort{vfr} traffic is very common, however the existing solutions researched also have this limitation.
+    \item Different types of aircraft, e.g. helicopters, will not be simulated because the way they behave is very different to fixed-wing aircraft and in most airports it is not common to see them.
+    The maneuvering characteristics used will be an approximation of an average airliner, rather than having different data for different types.
+    \item \Gls{airspace} boundaries will not be simulated because it is too difficult to obtain the data defining them; and even if it could be sourced, it would also be difficult to calculate whether an aircraft was within a certain area of airspace because their areas are defined by a series of points. It is also not very necessary because at most airports there is a large open area of \gls{airspace}, so considering it does not enter into the workload of the controller much; so excluding it would not decrease realism much.
 \end{itemize}
 
 
@@ -371,28 +380,28 @@ Below is the initial design for the data required to be stored about each featur
 \end{center}
 
 
-\subsection{Displaying aircraft}
+\subsection{Displaying aeroplanes}
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.5\textwidth]{diagrams/aeroplane_design.png}
-\caption{\label{fig:aeroplane_design}Design of the aircraft display}
+\caption{\label{fig:aeroplane_design}Design of the aeroplane display}
 \end{figure}
-Figure \ref{fig:aeroplane_design} shows the four main features of the aircraft interface.
+Figure \ref{fig:aeroplane_design} shows the four main features of the aeroplane interface.
 \begin{itemize}
-    \item The blip: a dot or other symbol showing the last known position of the aircraft, which the other features are centred around.
+    \item The blip: a dot or other symbol showing the last known position of the aeroplane, which the other features are centred around.
     \item The leader line: a line pointing in the last known direction of travel.
-    \item History dots: a series of dots or other symbols showing the previously received positions of the aircraft, illustrating its motion.
-    \item The tag: a box which can be dragged around relative to the blip showing information about the aircraft; it will also be used to give instructions to the aircraft.
+    \item History dots: a series of dots or other symbols showing the previously received positions of the aeroplane, illustrating its motion.
+    \item The tag: a box which can be dragged around relative to the blip showing information about the aeroplane; it will also be used to give instructions to the aeroplane.
 \end{itemize}
 
 
-\subsection{Giving instructions to aircraft}
+\subsection{Giving instructions to aeroplanes}
 As described in section \ref{existingsolutions}, there are various approaches to this.
 One is to use text input.
 The problem with this is that, especially for users who are slow at typing, it may be slow to use; also the user could make a typo which would require them to type the instruction out again.
 Another approach is to use mouse movements.
 This would be faster and more intuitive to use but would compromise on realism and might not enable me to offer the complex set of instructions necessary.
-Therefore to strike the best balance between usability and realism, I will use a system in which the user enters values into input boxes on the tags next to the aircraft, and more complicated options will be presented through drop-down menus on the tag.
+Therefore to strike the best balance between usability and realism, I will use a system in which the user enters values into input boxes on the tags next to the aeroplane, and more complicated options will be presented through drop-down menus on the tag.
 
 %\subsection{Aeroplane simulation}
 %\begin{figure}[H]
@@ -434,9 +443,9 @@ The modes will each be classes which will inherit from a parent class such as La
 \caption{\label{fig:vertnav}State transitions between vertical modes}
 \end{figure}
 Mirroring reality, when an instruction to climb or descend is given an altitude change mode such as vertical speed will be engaged and the altitude hold mode armed.
-The vertical speed mode will control the commanded flight path angle to achieve the desired vertical speed, and then as the aircraft nears the instructed altitude the altitude hold mode will activate itself and level the aeroplane off without over or undershooting.
+The vertical speed mode will control the commanded flight path angle to achieve the desired vertical speed, and then as the aeroplane nears the instructed altitude the altitude hold mode will activate itself and level the aeroplane off without over or undershooting.
 
-When the aeroplane is cleared for an \acrshort{ils} approach, the glideslope capture mode will be armed, and then as the aircraft approaches an appropriate distance from the glideslope, the mode will activate itself and command a pitch down to match the glideslope angle.
+When the aeroplane is cleared for an \acrshort{ils} approach, the glideslope capture mode will be armed, and then as the aeroplane approaches an appropriate distance from the glideslope, the mode will activate itself and command a pitch down to match the glideslope angle.
 This will require calculating the current height of the glideslope beam at the aeroplane's position based on the position and elevation of the transmitter; and the angle of the glideslope.
 
 \subsubsection{Lateral guidance}
@@ -573,7 +582,7 @@ public override void _Process(double delta)
 
 
 \subsection{Aeroplane physical simulation}
-The heading of an aircraft describes the direction it is pointing in, which is not necessarily the same as the direction it is travelling in.
+The heading of an aeroplane describes the direction it is pointing in, which is not necessarily the same as the direction it is travelling in.
 In stable flight the main contributor to this discrepancy is wind, see figure \ref{fig:windtriangle}.
 
 \lstset{style=csharp}
@@ -590,7 +599,7 @@ In stable flight the main contributor to this discrepancy is wind, see figure \r
 \includegraphics[width=0.5\textwidth]{windtriangle.png}
 \caption{\label{fig:windtriangle}The wind triangle}
 \end{figure}
-To calculate a \gls{vector} representing the movement of an aircraft over the ground the heading \gls{vector} and wind \gls{vector} are added, where the \gls{heading} \gls{vector} is the aircraft's \gls{directionvector} multiplied by its \gls{airspeed} and the wind \gls{vector} is the wind \gls{directionvector} multiplied by the wind speed.
+To calculate a \gls{vector} representing the movement of an aeroplane over the ground the heading \gls{vector} and wind \gls{vector} are added, where the \gls{heading} \gls{vector} is the aeroplane's \gls{directionvector} multiplied by its \gls{airspeed} and the wind \gls{vector} is the wind \gls{directionvector} multiplied by the wind speed.
 \lstset{style=csharp}
 \begin{lstlisting}[caption=Extract of the aeroplane physics process]
 Vector2 airVector = HeadingToVector(TrueHeading) * TrueAirspeed;
