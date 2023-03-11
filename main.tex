@@ -1,10 +1,14 @@
 \documentclass{article}
 
 % Language
-\usepackage[english]{babel}
+\usepackage[british]{babel}
 
 % Set page size and margins
 \usepackage[a4paper,top=2cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+% Don't break paragraphs
+\widowpenalties 1 10000
+\raggedbottom
 
 % Useful packages
 \usepackage[nottoc]{tocbibind}
@@ -33,6 +37,7 @@
 
 % Code style
 \definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+% LTeX: enabled=false
 \lstdefinestyle{csharp}{
     language=[Sharp]C,
     backgroundcolor=\color{backcolour},   
@@ -52,6 +57,7 @@
     showtabs=false,                  
     tabsize=2
 }
+% LTeX: enabled=true
 
 % Header and Footer
 \renewcommand{\headrulewidth}{0pt} % Header rule
@@ -75,7 +81,7 @@
 \renewcommand{\familydefault}{\sfdefault}
 
 % Title
-\title{Air Traffic Control Simulator}
+\title{Air Traffic Control Simulator: OCR GCE A Computer Science Project}
 \author{Nathaniel Taulbut}
 \date{\today}
 
@@ -116,7 +122,6 @@
     \noindent\makebox[\textwidth]{\includegraphics[width=\paperwidth]{pictures/heathrow_night_1.jpg}}
     % \includegraphics[width=\textwidth]{heathrow_night_1.jpg}
 \end{titlepage}
-\clearpage
 
 % Table of contents
 \tableofcontents
@@ -124,6 +129,7 @@
 
 % List of figures and listings
 \listoffigures
+\addcontentsline{toc}{section}{List of Listings}
 \lstlistoflistings
 
 \vfill
@@ -146,33 +152,36 @@ Air traffic controllers monitor the position of aircraft using radar, as shown i
 
 
 \section{Analysis}
+\subsection{Problem identification}
 There are three main types of air traffic controllers: Aerodrome, Area, and Approach.
 
 Aerodrome Controllers issue clearances to take off and land and route aircraft around the airfield; Area Controllers are responsible for aircraft in the climb, descent and en-route phases of flight; and Approach Controllers manage aircraft approaching an airport, putting them into the most efficient sequence to land\cite{natscareers}.
 
 An air traffic controller is responsible for a particular section of \gls{airspace}.
 Aircraft will arrive into their area of responsibility from certain points, and they will have to guide the traffic to the next controller's area of responsibility.
-For example, a plane enters an approach control area descending from cruise, and the controller must guide them to an approach for a certain runway, where they are transferred to the tower controller who is responsible for the runways and the area in close proximity to the airport.
+For example, a plane enters an approach control area descending from cruise, and the controller must guide them to an approach for a certain runway, where they are transferred to the aerodrome controller.
 
 There are existing solutions for real-world training of air traffic controllers, and for public use.
 Because the solutions for real-world controllers require certification, my solution will focus on public use.
 My solution will aim to improve on the areas that are lacking in the existing publicly available solutions.
 
 
-\clearpage
 \subsection{Stakeholders}
-\subsubsection{Air Traffic Control organisations}
-The UK's \acrfull{nats} organisation has a basic air traffic control game on their website for people to test their skills and determine if becoming an air traffic controller is right for them.
+The two primary stakeholders for my solution are hobbyists and air traffic control organizations.
+Their needs both include realism and ease of use.
+The design section (\ref{design}) will discuss how decisions have been made to meet these needs.
+
+\subsubsection{Air Traffic Control organizations}
+The UK's \acrfull{nats} organization has a basic air traffic control game on their website for people to test their skills and determine if becoming an air traffic controller is right for them.
 My solution could better solve that problem by providing a more realistic simulation, creating a more accurate test.
-Other ATC organisations could promote the solution and make use of it to get people interested in air traffic control, making them more likely to take it up as a career, which is necessary as some \acrshort{atc} organisations struggle to recruit enough controllers\cite{indiaatcshortage}.
+Other ATC organizations could promote the solution and make use of it to get people interested in air traffic control, making them more likely to take it up as a career, which is necessary as some \acrshort{atc} organizations struggle to recruit enough controllers\cite{indiaatcshortage}.
 
 \subsubsection{Hobbyists}
 Providing air traffic control is challenging and high-pressure.
 It involves reacting to novel situations; thinking and planning ahead; and executing to move aeroplanes as safely and quickly as possible\cite{natsbuzz}.
 For this reason, many people find it enjoyable to play the role of \acrshort{atc} in a simulator -- the \acrfull{vatsim}\footnote{\url{https://vatsim.net}} has over 100,000 active members as of 2023.
 These users likely have an interest in air traffic control generally or want to become a controller in real life.
-They will make use of the solution for entertainment as well as personal training in skills such as multi-tasking and problem solving.
-Their needs include realism and ease of use, which my solution will be able to provide.
+They will make use of the solution for entertainment as well as personal training in skills such as multitasking and problem-solving.
 Because of their interests, they are likely to own a desktop or laptop computer.
 
 Representing this group is Freddy.
@@ -182,7 +191,7 @@ He can therefore provide very useful feedback on my solution.
 
 
 \subsection{Existing solutions} \label{existingsolutions}
-\subsubsection{ATC-SIM}
+\subsubsection{ATC-SIM} \label{atc-sim}
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.7\textwidth]{existing_solutions/atcsimmenu.png}
@@ -219,19 +228,20 @@ Endless ATC\footnote{\url{https://startgrid.itch.io/endlessatc}} is a desktop an
 The user can issue headings to aeroplanes by clicking or tapping on them and then moving their cursor in the direction of the desired heading.
 The view can be panned around with the mouse and zoomed in with the scroll wheel.
 Buttons on the side allow the user to change altitude, speed, and heading, or they can use various keys such as the scroll wheel to quickly change these values.
+
 Once values have been changed, a button must be pressed to confirm or cancel the instructions.
 A problem is that an instruction is also confirmed when the user clicks away or onto another aeroplane, potentially leading to confirming an instruction the user didn't mean to.
 Text next to each aeroplane displays their current altitude, heading, and speed.
 A limited number of waypoints are available which aeroplane can be directed to by clicking and dragging to them.
 The coastline is shown with overly simple lines.
-A limited number of customisation options are available, such as changing the aeroplane icons.
+A limited number of customization options are available, such as changing the aeroplane icons.
 Another issue is that the user can only give altitude instructions in increments of thousands of feet, whereas it is very common in reality for controllers to give instructions involving hundreds of feet.
 
 
 \subsection{Features} \label{essentialfeatures}
 \subsubsection{Simulated aeroplanes}
 The aim of my solution is to simulate the role of an air traffic controller, and the user will therefore need some traffic to control.
-Whilst some solutions require other people to 'fly' the aeroplanes, mine should allow someone to use the simulation without any additional people, since if it did require them it would reduce the flexibility of the use of the simulator to when they could be organised.
+Whilst some solutions require other people to 'fly' the aeroplanes, mine should allow someone to use the simulation without any additional people, since if it did require them it would reduce the flexibility of the use of the simulator to when they could be organized.
 Therefore the air traffic will have to be simulated and computer controlled.
 This will involve repeatedly calculating the aeroplane's movement many times a second based on their speed and direction, and other factors such as wind.
 This can be achieved with an algorithm and mathematical calculations which are suited to being run on a computer, allowing many aeroplanes to be simulated quickly and concurrently.
@@ -249,44 +259,41 @@ Because the pitch required to maintain a certain \gls{flightpathangle} changes d
 A simulation of the takeoff procedures of the aeroplane, such as its acceleration on the ground and initial rotation, will not need to be included because the solution is focussed on approach control.
 Aeroplanes landing and flaring can also be largely ignored because below a certain altitude they will not be visible on the radar anyway.
 
-The following success criteria must be met to ensure sufficient realism of the aeroplane simulation as required by the stakeholders:
-\begin{itemize}
-    \item To simulate the manoeuvering characteristics of a typical airliner, it should take a certain amount of time for an aeroplane to change direction and speed
-    \item The aeroplane should take a realistic amount of time to change altitude and heading
-    \item Timescales should always be accurate, independent of the performance of the simulation
-    \item Fifteen or more aeroplane should be able to be simulated simultaneously while maintaining performance, as this is how many a controller is typically required to control in real life
-\end{itemize}
-
-\subsubsection{Giving instructions to aeroplanes}
-In reality, air traffic controllers instruct aeroplane pilots verbally over radio.
-The aeroplanes in my solution will be simulated, so there will be no pilot to hear and parse an audio instruction, e.g. "Air France 354, descend 5,000 feet, QNH 1018".
-Therefore an alternative method of giving these aeroplanes instructions will be needed.
-The essential instructions necessary to guide an aeroplane to a landing are for it to:
-\begin{itemize}
-    \item Fly on a \gls{heading}
-    \item Fly to a \gls{waypoint}
-    \item Change altitude
-    \item Travel at a certain \gls{airspeed}
-    \item Perform an \gls{instrumentapproach}
-\end{itemize}
-The solution will create an abstraction of the verbal instructions which hides some detail, for example instead of using the text '[callsign], climb/descend altitude 5,000 feet', the user could type a number into the corresponding box and the plane will decide whether it needs to climb or descend if its current altitude is above or below the entered value.
-
-The solution should allow the user to give instructions as quickly or quicker than they would be able to verbally in real life.
-To make the experience more fluid, it should also require as few button presses or mouse clicks as possible.
-
-\subsubsection{Wind drift}
 Controllers often direct aeroplanes by telling them to fly on a certain heading.
 The heading of an aeroplane describes the direction it is pointing in which, largely because of wind, is not necessarily the same as the direction it is travelling in.
 Therefore controllers have to account for this when giving headings so that the aeroplane's actual track is in the intended direction.
 This is a big part of the controller's job, so it will be necessary to simulate this.
 The input to this system will be a wind direction and a wind speed, live data for which could be obtained from an internet API.
 
+The following success criteria must be met to ensure sufficient realism of the aeroplane simulation as required by the stakeholders:
+\begin{itemize}
+    \item To simulate the manoeuvring characteristics of a typical airliner, it should take a certain amount of time for an aeroplane to change direction and speed
+    \item The aeroplane should take a realistic amount of time to change altitude and heading
+    \item Timescales should always be accurate, independent of the performance of the simulation
+    \item Fifteen or more aeroplanes should be able to be simulated simultaneously while maintaining performance, as this is how many a controller is typically required to control in real life
+\end{itemize}
+
 \subsubsection{Displaying aeroplanes}
-A representation of the aeroplan will need to be shown.
+A representation of the aeroplane will need to be shown.
 It will need to show their assigned heading or waypoint, altitude, and speed; their current heading or targeted waypoint, altitude, and speed; and their callsign.
-As with real life radar displays, it should show a trail of dots or other symbols behind the aeroplan to illustrate its path and a line in front to show its current direction of travel.
+As with real life radar displays, it should show a trail of dots or other symbols behind the aeroplane to illustrate its path and a line in front to show its current direction of travel.
 It should be visually similar to real life for additional realism and immersion.
 This can only be accomplished with a computer because of its unique ability to render custom, moving and changing graphics to display on an output device such as a monitor.
+
+\subsubsection{Aeroplane instructions}
+In reality, air traffic controllers instruct aeroplane pilots verbally over radio.
+The aeroplanes in my solution will be simulated, so there will be no pilot to hear and parse an audio instruction, e.g. "Air France 354, descend 5,000 feet, QNH 1018".
+Therefore an alternative method of giving these aeroplanes instructions will be needed.
+The essential instructions necessary to guide an aeroplane to a landing are for it to fly on a \gls{heading} or to a \gls{waypoint}, change altitude or \gls{airspeed}, and perform an \gls{instrumentapproach}.
+
+The solution will create an abstraction of the verbal instructions which hides some detail, for example instead of using the text '[callsign], climb/descend altitude 5,000 feet', the user could type a number into the corresponding box and the plane will decide whether it needs to climb or descend if its current altitude is above or below the entered value.
+To parse the user's input, the program will need to make multiple decisions.
+For example, if the first character of the input to the heading field is an 'L' it would follow the process for instructing a turn to the left.
+Also if the text was the name of a waypoint, it would send an instruction to go direct to that waypoint rather than a heading instruction.
+This system should function concurrently with the simulation of the aeroplane, so that it does not pause the aeroplane's movement.
+
+The solution should allow the user to give instructions as quickly or quicker than they would be able to verbally in real life.
+To make the experience more fluid, it should also require as few button presses or mouse clicks as possible.
 
 \subsubsection{Waypoints}
 \begin{figure}[H]
@@ -296,7 +303,7 @@ This can only be accomplished with a computer because of its unique ability to r
 \end{figure}
 Waypoints are points, defined by latitude and longitude and given five-letter names, which are used for air navigation.
 They are created specifically for that purpose and usually have no connection to features of the real world\cite{waypoint}.
-A commercial airliner's route from one airport to another --- its flightplan --- is largely defined as a series of waypoints which it will fly between.
+A commercial airliner's route from one airport to another --- its flight plan --- is largely defined as a series of waypoints which it will fly between.
 Air traffic controllers often take advantage of waypoints to direct traffic, instructing them to 'fly direct' to a named waypoint, for example "BAW123, route direct WILLO".
 Waypoints are indispensable to air traffic controllers, therefore it is necessary to include them in my solution.
 This will require data to be sourced with the names and GPS coordinates of the waypoints.
@@ -326,8 +333,9 @@ They are as follows:
     Aeroplanes under \acrfull{vfr} are flown by the pilot with reference to visual landmarks which are not simulated.
     This is a fairly major limitation because at some airports \acrshort{vfr} traffic is very common, however the existing solutions researched also have this limitation.
     \item Different types of aircraft, e.g. helicopters, will not be simulated because the way they behave is very different to fixed-wing aircraft and in most airports it is not common to see them.
-    The maneuvering characteristics used will be an approximation of an average airliner, rather than having different data for different types.
-    \item \Gls{airspace} boundaries will not be simulated because it is too difficult to obtain the data defining them; and even if it could be sourced, it would also be difficult to calculate whether an aircraft was within a certain area of airspace because their areas are defined by a series of points. It is also not very necessary because at most airports there is a large open area of \gls{airspace}, so considering it does not enter into the workload of the controller much; so excluding it would not decrease realism much.
+    The manoeuvring characteristics used will be an approximation of an average airliner, rather than having different data for different types.
+    \item \Gls{airspace} boundaries will not be simulated because it is too difficult to obtain the data defining them; and even if it could be sourced, it would also be difficult to calculate whether an aircraft was within a certain area of airspace because their areas are defined by a series of points.
+    It is also not very necessary because at most airports there is a large open area of \gls{airspace}, so considering it does not enter into the workload of the controller much; so excluding it would not decrease realism much.
 \end{itemize}
 
 
@@ -341,46 +349,62 @@ Firstly, the complex inputs necessary for directing air traffic, which rules out
 Secondly, the large area of information which has to be displayed, which rules out devices with small screens such as smartphones.
 However this will not present an issue, because the majority of stakeholders in the solution will have a computer.
 
-To the same end, it should function well on a computer with very minimal specifications, for instance a 2GHz dual-core processor with integrated graphics, 4GB of RAM, and a 120GB hard drive.
+To the same end, it should function well on a computer with very minimal specifications, for instance a 2GHz dual-core processor with integrated graphics, 4 GB of RAM, and a 120 GB hard drive.
 The program should function on Windows, Linux, and macOS systems.
 \clearpage
 
 
-\section{Design}
-Following the design of ATC-Sim, the simulator will have two main screens: a main menu where the user can select which airport they want to control at, and a separate gameplay screen they will be taken to where that will take place.
-Separating these problems means that the code for the menu does not need to know how the simulation works, it just gives it the necessary data, and vice versa the simulation does not know about the menu.
-This will make development easier because changes to one system will largely not affect the way the other works.
+\section{Design} \label{design}
+\subsection{Breakdown of the problem}
+Figure \ref{fig:solution_diagram} shows how the problem has been broken down into smaller problems and sub-problems.
+Breaking the problem down like this allows each to be solved independently, separating concerns and making development easier because changes to one area do not affect other areas.
+The subsequent subsections and their organization will illustrate further the process of choosing how to break down the problem.
+
 \begin{sidewaysfigure}
     \includegraphics[width=\textwidth]{diagrams/problemdiagram.png}
     \caption{\label{fig:solution_diagram}Solution diagram}
 \end{sidewaysfigure}
-\clearpage
 
 
 \subsection{Data}
-Many problems and of the solution shown in figure \ref{fig:solution_diagram} require data to be stored.
+Many problems of the solution shown in figure \ref{fig:solution_diagram} require data to be stored.
 This includes waypoints, geography, airports, and more.
 The Godot game engine provides a feature called \textit{resources}, which are data containers that allow you to define the names and data types of fields that the resource should store; then the engine manages writing this to the disk in an appropriate place as a text file.
 This is very convenient because it abstracts away the details of handling files on different operating systems and allows an object-oriented style approach to data storage where fields can contain references to other resource types, for example a RadarConfig resource will contain an array of references to Waypoint resources.
 It also provides data types such as vectors.
-Below is the initial design for the data required to be stored about each feature:
-\begin{center}
-\begin{tabular}{ | p{5em} | p{20em} | } 
-    \hline
-    Waypoint &
-    \begin{itemize}
-        \item Vector2 LatitudeLongitude
-        \item string Name
-    \end{itemize}
-    \\ 
-    \hline
-    Airport & TODO \\ 
-    \hline
-\end{tabular}
-\end{center}
+% \begin{center}
+% \begin{tabular}{ | p{5em} | p{20em} | } 
+%     \hline
+%     Waypoint &
+%     \begin{itemize}
+%         \item Vector2 LatitudeLongitude
+%         \item string Name
+%     \end{itemize}
+%     \\ 
+%     \hline
+%     Airport & TODO \\ 
+%     \hline
+% \end{tabular}
+% \end{center}
 
 
-\subsection{Displaying aeroplanes}
+\subsection{Interface}
+Because it is effective in ATC-Sim (section \ref{atc-sim}), the simulator will have two main screens: a main menu where the user can select which airport they want to control at, and a separate gameplay screen they will be taken to where that will take place.
+Each will be a separate 'scene' in Godot, which can be created independently.
+
+\subsubsection{Main menu}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{diagrams/mainmenu.png}
+\caption{\label{fig:main_menu_design}Main menu screen design}
+\end{figure}
+Figure \ref{fig:main_menu_design} shows an approximate and simple design for a main menu.
+A dropdown menu will be present which will be populated with the airport options available stored on the computer, with one of them selected by default.
+A button directly below it will initiate the gameplay.
+This should be fairly intuitive and usable.
+Some text can be shown to give some help with how to use the simulation.
+
+\subsubsection{Displaying aeroplanes}
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.5\textwidth]{diagrams/aeroplane_design.png}
@@ -394,8 +418,7 @@ Figure \ref{fig:aeroplane_design} shows the four main features of the aeroplane 
     \item The tag: a box which can be dragged around relative to the blip showing information about the aeroplane; it will also be used to give instructions to the aeroplane.
 \end{itemize}
 
-
-\subsection{Giving instructions to aeroplanes}
+\subsubsection{Giving instructions to aeroplanes}
 As described in section \ref{existingsolutions}, there are various approaches to this.
 One is to use text input.
 The problem with this is that, especially for users who are slow at typing, it may be slow to use; also the user could make a typo which would require them to type the instruction out again.
@@ -505,6 +528,7 @@ public static float GetDistanceNm(float latitude, float longitude, float otherLa
 % Insert more detail about testing here
 After testing, I found that this broke somehow.
 So I used the haversine formula instead:
+TODO: add evidence and elaborate
 \[ \operatorname{hav}(\theta ) = \operatorname{hav} (\Delta \phi) + \cos(\varphi _{1})\cos (\varphi _{2})\operatorname{hav}(\Delta \lambda) \] 
 \[ d = r \operatorname{archav} (h) \]
 
@@ -531,7 +555,7 @@ public static float Archaversine(float x)
 }
 \end{lstlisting}
 
-\subsubsection{Calculating position as a cartesian coordinate}
+\subsubsection{Calculating position as a Cartesian coordinate}
 By using an imaginary point with the latitude of the screen centre and the longitude of the point, I can individually calculate the horizontal and vertical distances.
 Because the distance will always be positive, I have to calculate the \gls{quadrant} the point lies in relative to the screen centre and flip the sign accordingly for it to be a coordinate.
 \lstset{style=csharp}
@@ -596,7 +620,7 @@ In stable flight the main contributor to this discrepancy is wind, see figure \r
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.5\textwidth]{windtriangle.png}
+\includegraphics[width=0.5\textwidth]{diagrams/windtriangle.png}
 \caption{\label{fig:windtriangle}The wind triangle}
 \end{figure}
 To calculate a \gls{vector} representing the movement of an aeroplane over the ground the heading \gls{vector} and wind \gls{vector} are added, where the \gls{heading} \gls{vector} is the aeroplane's \gls{directionvector} multiplied by its \gls{airspeed} and the wind \gls{vector} is the wind \gls{directionvector} multiplied by the wind speed.
@@ -645,187 +669,59 @@ Because it would be difficult to add the debugging features necessary to the mai
 I initially chose to use a PID controller\cite{pidcontroller} because it is probably similar to what is done in real life, however it was difficult to get it to perform accurately.
 Therefore I chose to use a simpler solution which would, based on the time necessary to pitch down to match the glideslope's angle, calculate the point at which to command pitch down in order to align with the glideslope's path.
 
+TODO: Add evidence
+
 
 \subsection{Aeroplane display}
+TODO: explain aeroplane display system
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{screenshots/aeroplane.png}
+\caption{\label{fig:aeroplane}A screenshot of the game showing the aeroplane display}
+\end{figure}
+
+\subsubsection{Leader line}
 TODO
-\subsubsection{Tag}
-\lstset{style=csharp}
-\begin{lstlisting}[caption=Drawing the tag line]
-public override void _Draw()
-{
-    // Drawing the line from the blip to the tag
 
-    // Get the inner rect, adjusting its position because its otherwise local to its parent
-    Rect2 innerRect = _innerControlArea.GetRect();
-    innerRect.Position += TagDisplay.Position;
-    // Intersect with the outer rect when hovering and the inner rect when not
-    Rect2 tagRect = Hovering ? TagDisplay.GetRect() : innerRect; 
 
-    // Define start and end points as blip position and tag centre
-    Vector2 end = innerRect.GetCenter(); //tagRect.GetCenter();
-    Vector2 start = Position + Position.DirectionTo(end) * 10;
+\subsubsection{History dots}
+TODO
 
-    // Define line from blip to tag centre
-    float m = (start.y - end.y) / (start.x - end.x);
-    float c = start.y - m * start.x;
 
-    // Calculate intersection points for all four lines
-    float x = innerRect.Position.x;
-    Vector2 p_a = new(x, m * x + c);
-    float y = innerRect.Position.y;
-    Vector2 p_b = new((y - c) / m, y);
-    x = innerRect.Position.x + tagRect.Size.x;
-    Vector2 p_c = new(x, m * x + c);
-    y = innerRect.Position.y + tagRect.Size.y;
-    Vector2 p_d = new((y - c) / m, y);
-    List<Vector2> points = new() { p_a, p_b, p_c, p_d };
+\subsection{Aeroplane Tag}
+TODO: explain the tag
 
-    // Draw line from start to closest intersection point
-    // Do not draw the line if the tag is over the blip
-    if (!tagRect.HasPoint(start))
-    {
-        DrawLine(start, points.MinBy(point => point.DistanceSquaredTo(end - end.Normalized() * 10f)), Colors.White, 1, true);
-    }
-}
-\end{lstlisting}
+
+\subsubsection{Heading and waypoint field}
+TODO
+
+
+\subsubsection{Approach selector}
+TODO
+
+
+\subsubsection{Altitude field}
+TODO
+
+
+\subsubsection{Speed field}
+TODO
+
+
+\subsubsection{Tag line}
+TODO
 
 
 \subsection{Waypoints}
 TODO
-\begin{lstlisting}[caption=Waypoints generation]
- d
-\end{lstlisting}
-\begin{lstlisting}[caption=Waypoint class]
-public partial class Waypoint : Sprite2D
-{
-    public WaypointData WaypointData;
-    public Vector2 PositionNm;
-
-    public override void _Ready()
-    {
-        // Set icon coressponding to waypoint type
-        Texture = WaypointData.Basis switch
-        {
-            WaypointData.Type.RNAV => Simulator.RadarConfig.Style.RNAVTexture,
-            WaypointData.Type.VOR => Simulator.RadarConfig.Style.VORTexture,
-            WaypointData.Type.VORDME => Simulator.RadarConfig.Style.VORDMETexture,
-            WaypointData.Type.NDB => Simulator.RadarConfig.Style.NDBTexture,
-            _ => throw new NotImplementedException()
-        };
-
-        // Set name
-        GetChild<Label>(0).Text = WaypointData.ResourceName;
-
-        // Calculate position relative to screen centre
-        PositionNm = Geo.RelativePositionNm(WaypointData.LatLon, Simulator.RadarConfig.LatLon);
-    }
-
-    public override void _Draw()
-    {
-        Position = Simulator.ScaledPosition(PositionNm, GetViewportRect());
-    }
-
-    public void OnScaleChanged()
-    {
-        QueueRedraw();
-    }
-}
-\end{lstlisting}
 
 
 \subsection{Geographical features}
-\lstset{style=csharp}
-\begin{lstlisting}[caption=Drawing Terrain]
-public override void _Ready()
-{
-    // Read GeoJSON polylines
-    var polyLines = JSON.ParseString(Simulator.RadarConfig.GeoLines.data).AsGodotArray();
-    foreach (var polyLine in polyLines)
-    {
-        // Get the relative position of each point in the polyline
-        List<Vector2> points = new();
-        foreach (float[] point in polyLine.AsGodotArray())
-        {
-            Vector2 PointNm = Geo.RelativePositionNm(new Vector2(point[1], point[0]), Simulator.RadarConfig.LatLon);
-            points.Add(PointNm);
-        }
-        _polyLines.Add(points);
-    }
-}
-
-public override void _Draw()
-{
-    GD.Print("Drawing terrain");
-    foreach(List<Vector2> polyLine in _polyLines)
-    {
-        // Scale the points in the line
-        Vector2[] scaledPolyline = polyLine.Select(PointNm => Simulator.ScaledPosition(PointNm, GetViewportRect())).ToArray();
-        DrawPolyline(scaledPolyline, Simulator.RadarConfig.Style.CoastlineColour);
-    }
-}
-
-public void OnScaleChanged()
-{
-    QueueRedraw();
-}
-\end{lstlisting}
+TODO
 
 
 \subsection{Camera pan and zoom}
 TODO
-\begin{lstlisting}[caption=Camera pan and zoom]
-private void SetReference()
-{
-    _initialMousePosition = GetViewport().GetMousePosition();
-    _initialCameraPosition = Position;
-}
-
-public override void _Input(InputEvent @inputEvent)
-{
-    if (inputEvent.IsActionPressed("Pan Camera"))
-    {
-        SetReference();
-    }
-    else if (@inputEvent.IsActionPressed("Zoom In"))
-    {
-        if (Simulator.Zoom < MaxZoom)
-        {
-            Simulator.Zoom++;
-            // Move the camera to compensate for stretching of distances
-            Position *= 1f + Simulator.ZoomSpeed;
-            SetReference();
-        }
-    }
-    else if (@inputEvent.IsActionPressed("Zoom Out"))
-    {
-        if (Simulator.Zoom > MinZoom)
-        {
-            Simulator.Zoom--;
-            // Move the camera to compensate for stretching of distances
-            Position /= 1f + Simulator.ZoomSpeed;
-            SetReference();
-        }
-    }
-    else if (@inputEvent.IsActionPressed("Reset Camera"))
-    {
-        // Reset position and zoom
-        Simulator.Zoom = 0;
-        Position = Vector2.Zero;
-        SetReference();
-    }
-}
-
-public override void _Process(double delta)
-{
-    // Panning
-    // Move the camera in the opposite direction to mouse movement, from the reference point
-    if (Input.IsActionPressed("Pan Camera"))
-    {
-        Vector2 mouseDelta = GetViewport().GetMousePosition() - _initialMousePosition;
-        Position = _initialCameraPosition + new Vector2(-mouseDelta.x, -mouseDelta.y);
-    }
-}
-\end{lstlisting}
 
 
 \subsection{Radar definitions}
@@ -837,15 +733,24 @@ TODO
 
 
 \section{Evaluation}
+TODO
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{screenshots/schiphol2.png}
+\caption{\label{fig:schiphol}A screenshot of the simulation showing Schiphol airport}
+\end{figure}
 
 
 \subsection{Function and robustness testing}
+TODO
 
 
 \subsection{Usability testing}
+TODO
 
 
 \subsection{Conclusion}
+TODO
 
 
 
