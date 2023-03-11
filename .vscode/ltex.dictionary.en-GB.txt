@@ -14,3 +14,14 @@ LateralMode
 RollCommand
 ils
 csharp
+TrueAirspeed
+TrueHeading
+PositionNm
+PhysicsProcess
+GroundVector
+LateralGuidanceMode
+ILateralMode
+VerticalGuidanceMode
+IVerticalMode
+VerticalMode
+PhysicsUpdate

@@ -30,7 +30,7 @@
 \usepackage[titletoc, toc, page]{appendix}
 % Bibliography
 \usepackage[backend=biber, style=numeric, sorting=none]{biblatex}
-\addbibresource{sample.bib}
+\addbibresource{bibliography.bib}
 
 % Figures are in figures/
 \graphicspath{ {figures} }
@@ -110,7 +110,7 @@
 % ------------ Document ------------
 \begin{document}
 
-% ------- Front page -------
+% ------- Cover page -------
 \begin{titlepage}
     \maketitle
     % \begin{abstract}
@@ -122,6 +122,9 @@
     \noindent\makebox[\textwidth]{\includegraphics[width=\paperwidth]{pictures/heathrow_night_1.jpg}}
     % \includegraphics[width=\textwidth]{heathrow_night_1.jpg}
 \end{titlepage}
+
+% Blank page for cover
+\shipout\null
 
 % Table of contents
 \tableofcontents
@@ -218,7 +221,7 @@ Only a limited number of waypoints are available for the user to direct the aero
 There is no visual indication of the approach path, which makes it impossible for the user to accurately guide aeroplanes in.
 Overall this is a reasonable solution for some but will disappoint more knowledgeable users.
 
-\subsubsection{Endless ATC}
+\subsubsection{Endless ATC} \label{endlessatc}
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{existing_solutions/endlessatc.png}
@@ -273,13 +276,6 @@ The following success criteria must be met to ensure sufficient realism of the a
     \item Fifteen or more aeroplanes should be able to be simulated simultaneously while maintaining performance, as this is how many a controller is typically required to control in real life
 \end{itemize}
 
-\subsubsection{Displaying aeroplanes}
-A representation of the aeroplane will need to be shown.
-It will need to show their assigned heading or waypoint, altitude, and speed; their current heading or targeted waypoint, altitude, and speed; and their callsign.
-As with real life radar displays, it should show a trail of dots or other symbols behind the aeroplane to illustrate its path and a line in front to show its current direction of travel.
-It should be visually similar to real life for additional realism and immersion.
-This can only be accomplished with a computer because of its unique ability to render custom, moving and changing graphics to display on an output device such as a monitor.
-
 \subsubsection{Aeroplane instructions}
 In reality, air traffic controllers instruct aeroplane pilots verbally over radio.
 The aeroplanes in my solution will be simulated, so there will be no pilot to hear and parse an audio instruction, e.g. "Air France 354, descend 5,000 feet, QNH 1018".
@@ -295,6 +291,13 @@ This system should function concurrently with the simulation of the aeroplane, s
 The solution should allow the user to give instructions as quickly or quicker than they would be able to verbally in real life.
 To make the experience more fluid, it should also require as few button presses or mouse clicks as possible.
 
+\subsubsection{Displaying aeroplanes}
+A representation of the aeroplane will need to be shown.
+It will need to show their assigned heading or waypoint, altitude, and speed; their current heading or targeted waypoint, altitude, and speed; and their callsign.
+As with real life radar displays, it should show a trail of dots or other symbols behind the aeroplane to illustrate its path and a line in front to show its current direction of travel.
+It should be visually similar to real life for additional realism and immersion.
+This can only be accomplished with a computer because of its unique ability to render custom, moving and changing graphics to display on an output device such as a monitor.
+
 \subsubsection{Waypoints}
 \begin{figure}[H]
 \centering
@@ -305,6 +308,7 @@ Waypoints are points, defined by latitude and longitude and given five-letter na
 They are created specifically for that purpose and usually have no connection to features of the real world\cite{waypoint}.
 A commercial airliner's route from one airport to another --- its flight plan --- is largely defined as a series of waypoints which it will fly between.
 Air traffic controllers often take advantage of waypoints to direct traffic, instructing them to 'fly direct' to a named waypoint, for example "BAW123, route direct WILLO".
+
 Waypoints are indispensable to air traffic controllers, therefore it is necessary to include them in my solution.
 This will require data to be sourced with the names and GPS coordinates of the waypoints.
 The waypoints should be shown on the screen in the correct position with a symbol corresponding to their type, and their name.
@@ -312,7 +316,13 @@ As many as 30 or more waypoints should be able to be displayed at once, since th
 
 % \subsubsection{Range Rings}
 
-%\subsubsection{Geographical features}
+\subsubsection{Geographical features}
+To make the simulated radar screen look realistic, it should be able to draw some kind of representation of the terrain.
+Like in Endless ATC (\ref{endlessatc}), this can be a line showing the local coastline.
+This is important because controllers should know if an aircraft is over water.
+A large amount of data will need to be sourced representing this, which will then have to be processed and displayed.
+This is a task very suited to being run a computer because of the storage and intensive processing of data.
+This data will ultimately be represented using many latitude and longitude points, and looping will be necessary to apply processing to all of them.
 
 \subsubsection{Pan and Zoom}
 The user should be able to pan and zoom their view of the simulated radar screen.
@@ -353,6 +363,12 @@ To the same end, it should function well on a computer with very minimal specifi
 The program should function on Windows, Linux, and macOS systems.
 \clearpage
 
+\begin{sidewaysfigure}
+    \includegraphics[width=\textwidth]{diagrams/problemdiagram.png}
+    \caption{\label{fig:solution_diagram}Solution diagram}
+\end{sidewaysfigure}
+
+\clearpage
 
 \section{Design} \label{design}
 \subsection{Breakdown of the problem}
@@ -360,32 +376,88 @@ Figure \ref{fig:solution_diagram} shows how the problem has been broken down int
 Breaking the problem down like this allows each to be solved independently, separating concerns and making development easier because changes to one area do not affect other areas.
 The subsequent subsections and their organization will illustrate further the process of choosing how to break down the problem.
 
-\begin{sidewaysfigure}
-    \includegraphics[width=\textwidth]{diagrams/problemdiagram.png}
-    \caption{\label{fig:solution_diagram}Solution diagram}
-\end{sidewaysfigure}
 
+\subsection{Representing space}
+My simulation will be simulating real-world places: airports and the world around them.
+Therefore I cannot use arbitrary units for position or approximate where things are.
+Equally, I cannot simulate motion or calculate where points of interest should appear on the screen using latitude and longitude values alone.
+Therefore a working value of the lateral and vertical distances in nautical miles from a reference point must be used, which is calculated once using the latitudes and longitudes.
+This abstraction removes the curvature of the earth.
 
-\subsection{Data}
-Many problems of the solution shown in figure \ref{fig:solution_diagram} require data to be stored.
-This includes waypoints, geography, airports, and more.
-The Godot game engine provides a feature called \textit{resources}, which are data containers that allow you to define the names and data types of fields that the resource should store; then the engine manages writing this to the disk in an appropriate place as a text file.
-This is very convenient because it abstracts away the details of handling files on different operating systems and allows an object-oriented style approach to data storage where fields can contain references to other resource types, for example a RadarConfig resource will contain an array of references to Waypoint resources.
-It also provides data types such as vectors.
-% \begin{center}
-% \begin{tabular}{ | p{5em} | p{20em} | } 
-%     \hline
-%     Waypoint &
-%     \begin{itemize}
-%         \item Vector2 LatitudeLongitude
-%         \item string Name
-%     \end{itemize}
-%     \\ 
-%     \hline
-%     Airport & TODO \\ 
-%     \hline
-% \end{tabular}
-% \end{center}
+\subsubsection{Scale}
+That gives everything a position in nautical miles, which then needs to be converted to a number of pixels for it to be displayed.
+A scale factor can be calculated by dividing the number of pixels available on the screen by the number of nautical miles that should be shown in that area.
+The values in nautical miles can then simply be multiplied by this factor.
+
+\subsubsection{Pan and zoom}
+The initial scale can be calculated from a desired width in nautical miles specific to each airport configuration.
+From there the user should be able to zoom in or out using the scroll wheel of their mouse.
+Each time the user zooms in or out an increment, the scale value will be multiplied by e.g. 1.1 or 0.9 respectively.
+
+Panning the simulated radar screen will be accomplished by recording the position of the user's mouse on the screen when they first press the right mouse button down, and then moving Godot's virtual camera in the inverse direction to the motion of the mouse relative to that point.
+
+\subsection{Simulated aeroplanes}
+In order to maintain physical consistency (e.g. if an aeroplane is already in a turn to the right, it will take longer to start turning to the left than if it was not turning), the navigation system will be isolated from the physical simulation and will interact with it by commanding a yaw rate in degrees per second and a \gls{flightpathangle} in degrees.
+I have chosen these parameters to provide a level of abstraction which is sufficiently realistic, while keeping complexity reasonably low.
+\begin{figure}[H]
+\centering
+\begin{tabular}{ |l| } 
+\hline
+\multicolumn{1}{ |c| }{\textbf{Aeroplane}} \\
+\hline
+Altitude : float \\ 
+TrueAirspeed : float \\
+TrueHeading : float \\
+PositionNm : Vector2 \\
+GroundVector : Vector2 \\
+LateralGuidanceMode : LateralMode \\
+VerticalGuidanceMode : VerticalMode \\
+\hline
+void PhysicsUpdate(float) \\
+\hline
+\end{tabular}
+\caption{\label{fig:aeroplaneclass}Aeroplane class diagram}
+\end{figure}
+Figure \ref{fig:aeroplaneclass} shows the key attributes and methods of the aeroplane class which will be used.
+Using a class enables many aeroplanes to be simulated at once, where each aeroplane is an instance of the class.
+Keeping track of the many variables of each would otherwise be very difficult.
+
+\subsubsection{Physics simulation}
+\begin{figure}[H]
+\centering
+\includegraphics{diagrams/flowcharts/aeroplanesimulationprocess.png}
+\caption{\label{fig:physics}Simulation loop}
+\end{figure}
+As shown in figure \ref{fig:physics}, the aeroplane physics simulation will use a loop in which it will talk to the navigation system to receive its commands for movement, and then update the flight parameters and re-calculate position.
+In all calculations the real world time since the last loop iteration will be used to make sure that timescales, e.g. the time it takes for the aircraft to bank left and right, are consistent.
+To simulate those times, the flight parameters will be moved towards the commanded values with a rate multiplied by the time delta on each iteration of the loop.
+Through testing in a flight simulator I found typical values for those rates: yaw will change at a rate of $\frac{1}{2}$ degrees per second (per second); flight path angle at 0.17 degrees per second (per second); and airspeed at 1 knot per second.
+This loop should run many times a second to provide sufficient accuracy.
+
+\subsubsection{Navigation simulation}
+At all times, a separate lateral and vertical guidance mode will be engaged.
+Making lateral and vertical modes independent of each other reduces code duplication because it is often required to have e.g. the same lateral behaviour with multiple vertical behaviours. This also mirrors how autopilots work in reality.
+Every simulation step, the active modes will be asked if they want to change to a different mode, which will be used for example when maintaining a heading while waiting to capture the localizer.
+The modes will each be classes which will inherit from a parent class such as LateralMode, overriding e.g. the RollCommand method to implement their own functionality.
+% The modes will each be classes which will implement \glspl{interface} stating that they include e.g. an update function.
+
+\begin{figure}[H]
+\centering
+\includegraphics{diagrams/vertnav.png}
+\caption{\label{fig:vertnav}State transitions between vertical guidance modes}
+\end{figure}
+\paragraph{Altitude select}
+When an instruction to climb or descend is given a vertical guidance mode such as vertical speed will be engaged.
+The vertical speed mode will control the commanded flight path angle to achieve the desired vertical speed, and then once the aeroplane is calculated to be close enough to the instructed altitude that if it levels off at the standard rate it will arrive at that altitude without over or undershooting, the mode will tell the guidance system to switch to the altitude hold mode.
+\paragraph{Glideslope}
+When the aeroplane is cleared for an \acrshort{ils} approach, the active vertical guidance mode will wait until the aeroplane approaches an appropriate distance from the glideslope, and then tell the guidance system to switch to the glideslope follow mode which will command a pitch down to match the glideslope angle.
+This will require calculating the current height of the glideslope beam at the aeroplane's position based on the position and elevation of the transmitter; and the angle of the glideslope.
+
+\begin{figure}[H]
+\centering
+\includegraphics{diagrams/lnav.png}
+\caption{\label{fig:lnav}State transitions between lateral modes}
+\end{figure}
 
 
 \subsection{Interface}
@@ -426,58 +498,6 @@ Another approach is to use mouse movements.
 This would be faster and more intuitive to use but would compromise on realism and might not enable me to offer the complex set of instructions necessary.
 Therefore to strike the best balance between usability and realism, I will use a system in which the user enters values into input boxes on the tags next to the aeroplane, and more complicated options will be presented through drop-down menus on the tag.
 
-%\subsection{Aeroplane simulation}
-%\begin{figure}[H]
-%\centering
-%\begin{tabular}{ |l| } 
-%\hline
-%\multicolumn{1}{ |c| }{\textbf{Aeroplane}} \\
-%\hline
-%Altitude : float \\ 
-%TrueAirspeed : float \\
-%TrueHeading : float \\
-%PositionNm : Vector2 \\
-%Velocity: Vector2 \\
-%\hline
-%HeadingToVector(float) \\
-%\_PhysicsProcess(double) \\
-%\hline
-%\end{tabular}
-%\caption{\label{fig:aeroplaneclass}Aeroplane class diagram}
-%\end{figure}
-
-\subsection{Aeroplane physical simulation}
-TODO
-
-
-\subsection{Aeroplane navigation simulation}
-In order to maintain physical consistency (e.g. if an aeroplane is already in a turn to the right, it will take longer to start turning to the left than if it was not turning), the navigation system will be isolated from the physical simulation and will interact with it by commanding a yaw rate in degrees per second and a \gls{flightpathangle} in degrees.
-At all times, a lateral and vertical guidance mode will be engaged.
-Optionally, other lateral and vertical guidance modes can be \textit{armed}, meaning at each simulation step they will be asked if they want to activate --- at which point they will take over the active mode and be removed from the armed modes list.
-This mirrors how autopilots work in reality.
-Every simulation step, the update method of the active modes will be called to receive their new command.
-The modes will each be classes which will inherit from a parent class such as LateralMode, overriding e.g. the RollCommand method to implement their own functionality.
-% The modes will each be classes which will implement \glspl{interface} stating that they include e.g. an update function.
-
-\subsubsection{Vertical guidance}
-\begin{figure}[H]
-\centering
-\includegraphics{diagrams/vertnav.png}
-\caption{\label{fig:vertnav}State transitions between vertical modes}
-\end{figure}
-Mirroring reality, when an instruction to climb or descend is given an altitude change mode such as vertical speed will be engaged and the altitude hold mode armed.
-The vertical speed mode will control the commanded flight path angle to achieve the desired vertical speed, and then as the aeroplane nears the instructed altitude the altitude hold mode will activate itself and level the aeroplane off without over or undershooting.
-
-When the aeroplane is cleared for an \acrshort{ils} approach, the glideslope capture mode will be armed, and then as the aeroplane approaches an appropriate distance from the glideslope, the mode will activate itself and command a pitch down to match the glideslope angle.
-This will require calculating the current height of the glideslope beam at the aeroplane's position based on the position and elevation of the transmitter; and the angle of the glideslope.
-
-\subsubsection{Lateral guidance}
-\begin{figure}[H]
-\centering
-\includegraphics{diagrams/lnav.png}
-\caption{\label{fig:lnav}State transitions between lateral modes}
-\end{figure}
-
 
 \subsection{Waypoints}
 \begin{figure}[H]
@@ -496,6 +516,28 @@ TODO
 \section{Development}
 I have chosen to use the Godot game engine\footnote{\url{https://godotengine.org/}} to build my simulator.
 It works using a system of nodes, which I can use to hold each module of my solution.
+
+
+\subsection{Data}
+Many problems of the solution shown require data to be stored.
+This includes waypoints, geography, airports, and more.
+The Godot game engine provides a feature called \textit{resources}, which are data containers that allow you to define the names and data types of fields that the resource should store; then the engine manages writing this to the disk in an appropriate place as a text file.
+This is very convenient because it abstracts away the details of handling files on different operating systems and allows an object-oriented style approach to data storage where fields can contain references to other resource types, for example a RadarConfig resource will contain an array of references to Waypoint resources.
+It also provides data types such as vectors.
+% \begin{center}
+% \begin{tabular}{ | p{5em} | p{20em} | } 
+%     \hline
+%     Waypoint &
+%     \begin{itemize}
+%         \item Vector2 LatitudeLongitude
+%         \item string Name
+%     \end{itemize}
+%     \\ 
+%     \hline
+%     Airport & TODO \\ 
+%     \hline
+% \end{tabular}
+% \end{center}
 
 
 \subsection{Mapping the real world onto the screen}
