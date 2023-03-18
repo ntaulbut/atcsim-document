@@ -244,10 +244,10 @@ Another issue is that the user can only give altitude instructions in increments
 \subsection{Features} \label{essentialfeatures}
 \subsubsection{Simulated aeroplanes}
 The aim of my solution is to simulate the role of an air traffic controller, and the user will therefore need some traffic to control.
-Whilst some solutions require other people to 'fly' the aeroplanes, mine should allow someone to use the simulation without any additional people, since if it did require them it would reduce the flexibility of the use of the simulator to when they could be organized.
-Therefore the air traffic will have to be simulated and computer controlled.
+Whilst some solutions require other people to 'fly' the aeroplanes, mine should allow someone to use the simulation without any additional people, making it more flexible.
+To achieve this the air traffic will have to be simulated by a computer.
 This will involve repeatedly calculating the aeroplane's movement many times a second based on their speed and direction, and other factors such as wind.
-This can be achieved with an algorithm and mathematical calculations which are suited to being run on a computer, allowing many aeroplanes to be simulated quickly and concurrently.
+This can be achieved with an algorithm and mathematical calculations which are suited to being run on a computer, allowing many aeroplanes to be simulated concurrently.
 
 These aeroplanes will be abstracted from reality, only simulating the variables that are necessary to appear realistic on a radar screen.
 For example, lift does not have to be simulated --- instead it can just be stated that the aeroplane is at a particular altitude.
@@ -260,15 +260,16 @@ Because the pitch required to maintain a certain \gls{flightpathangle} changes d
 \caption{\label{fig:pitchfpa}Pitch and FPA}
 \end{figure}
 A simulation of the takeoff procedures of the aeroplane, such as its acceleration on the ground and initial rotation, will not need to be included because the solution is focussed on approach control.
-Aeroplanes landing and flaring can also be largely ignored because below a certain altitude they will not be visible on the radar anyway.
+Aeroplanes landing can also be largely simplified because below a certain altitude they will not be visible on the radar anyway.
 
 Controllers often direct aeroplanes by telling them to fly on a certain heading.
-The heading of an aeroplane describes the direction it is pointing in which, largely because of wind, is not necessarily the same as the direction it is travelling in.
+The heading of an aeroplane describes the direction it is pointing in which, because of wind, is not necessarily the same as the direction it is travelling in.
 Therefore controllers have to account for this when giving headings so that the aeroplane's actual track is in the intended direction.
 This is a big part of the controller's job, so it will be necessary to simulate this.
 The input to this system will be a wind direction and a wind speed, live data for which could be obtained from an internet API.
 
-The following success criteria must be met to ensure sufficient realism of the aeroplane simulation as required by the stakeholders:
+\newpage
+\paragraph{Success criteria}
 \begin{itemize}
     \item To simulate the manoeuvring characteristics of a typical airliner, it should take a certain amount of time for an aeroplane to change direction and speed
     \item The aeroplane should take a realistic amount of time to change altitude and heading
@@ -286,17 +287,28 @@ The solution will create an abstraction of the verbal instructions which hides s
 To parse the user's input, the program will need to make multiple decisions.
 For example, if the first character of the input to the heading field is an 'L' it would follow the process for instructing a turn to the left.
 Also if the text was the name of a waypoint, it would send an instruction to go direct to that waypoint rather than a heading instruction.
-This system should function concurrently with the simulation of the aeroplane, so that it does not pause the aeroplane's movement.
 
-The solution should allow the user to give instructions as quickly or quicker than they would be able to verbally in real life.
-To make the experience more fluid, it should also require as few button presses or mouse clicks as possible.
+\paragraph{Success criteria}
+\begin{itemize}
+    \item The user should be able to give an instruction for an aircraft to fly on a \gls{heading} or to a \gls{waypoint}, change altitude or \gls{airspeed}, and perform an \gls{instrumentapproach}; and it should respond accordingly
+    \item This system should function concurrently with the simulation of the aeroplane, so that it does not pause the aeroplane's movement
+    \item The solution should allow the user to give instructions as quickly or quicker than they would be able to verbally in real life
+    \item To make the experience more fluid, it should also require as few button presses or mouse clicks as possible
+\end{itemize}
 
 \subsubsection{Displaying aeroplanes}
 A representation of the aeroplane will need to be shown.
 It will need to show their assigned heading or waypoint, altitude, and speed; their current heading or targeted waypoint, altitude, and speed; and their callsign.
 As with real life radar displays, it should show a trail of dots or other symbols behind the aeroplane to illustrate its path and a line in front to show its current direction of travel.
-It should be visually similar to real life for additional realism and immersion.
+It should be visually similar to real life for additional realism, including mimicking how quickly the display properties update, e.g. the radar only completes a full sweep every 4 seconds.
 This can only be accomplished with a computer because of its unique ability to render custom, moving and changing graphics to display on an output device such as a monitor.
+
+\paragraph{Success criteria}
+\begin{itemize}
+    \item The assigned heading or waypoint, altitude, and speed; current heading or targeted waypoint, altitude, speed, and callsign should be displayed
+    \item Properties should update at a realistic rate: position every 4 seconds, and others at around every 0.5 seconds
+    \item Every time the position updates, a history dot should be created up to a specified number, and they should then follow behind
+\end{itemize}
 
 \subsubsection{Waypoints}
 \begin{figure}[H]
@@ -312,9 +324,28 @@ Air traffic controllers often take advantage of waypoints to direct traffic, ins
 Waypoints are indispensable to air traffic controllers, therefore it is necessary to include them in my solution.
 This will require data to be sourced with the names and GPS coordinates of the waypoints.
 The waypoints should be shown on the screen in the correct position with a symbol corresponding to their type, and their name.
-As many as 30 or more waypoints should be able to be displayed at once, since this is how many are present around some airports.
 
-% \subsubsection{Range Rings}
+\paragraph{Success criteria}
+\begin{itemize}
+    \item Waypoints should appear in the correct position on the screen
+    \item Their name should be shown next to an icon which changes based on the type of waypoint
+    \item As many as 30 or more waypoints should be able to be displayed at once, since this is how many are present around some airports
+\end{itemize}
+
+\subsubsection{Pan and Zoom}
+The user should be able to pan and zoom their view of the simulated radar screen.
+This way they can more clearly see important areas where the majority of traffic is concentrated, rather than being limited to a fixed view.
+This is especially useful where the approach control airspace area is very large and it otherwise would not be possible to simulate because there would not be enough room on the screen.
+Being able to pan and zoom is also a feature of most modern real world radar screens.
+To make interacting with the solution as enjoyable as possible and as professional as the real world equivalents, panning and zooming should be smooth; at a fixed speed and in fixed steps; and the camera should zoom towards the centre of the screen.
+This will also create a familiar experience which is intuitive.
+
+\paragraph{Success criteria}
+\begin{itemize}
+    \item Panning and zooming should be smooth
+    \item It should occur at a fixed speed and in fixed steps
+    \item The camera should zoom towards the centre of the screen
+\end{itemize}
 
 \subsubsection{Geographical features}
 To make the simulated radar screen look realistic, it should be able to draw some kind of representation of the terrain.
@@ -324,13 +355,23 @@ A large amount of data will need to be sourced representing this, which will the
 This is a task very suited to being run a computer because of the storage and intensive processing of data.
 This data will ultimately be represented using many latitude and longitude points, and looping will be necessary to apply processing to all of them.
 
-\subsubsection{Pan and Zoom}
-The user should be able to pan and zoom their view of the simulated radar screen.
-This way they can more clearly see important areas where the majority of traffic is concentrated, rather than being limited to a fixed view.
-This is especially useful where the approach control airspace area is very large and it otherwise would not be possible to simulate because there would not be enough room on the screen.
-Being able to pan and zoom is also a feature of most modern real world radar screens.
-To make interacting with the solution as enjoyable as possible and as professional as the real world equivalents, panning and zooming should be smooth; at a fixed speed and in fixed steps; and the camera should zoom towards the centre of the screen.
-This will also create a familiar experience which is intuitive.
+\paragraph{Success criteria}
+\begin{itemize}
+    \item An abstraction of the terrain should be displayed
+    \item It should appear accurate, having the correct proportions and with no breaks in lines
+    \item It should respect the current scale of the display
+\end{itemize}
+
+\subsubsection{Extended centrelines}
+For every instrument approach (\acrshort{ils}) available at the airport the user is controlling at, a line extending from the threshold of the relevant runway in the direction of the localizer should be displayed and distance markers should be shown along it.
+As in real life, this feature is vital for the user to be able to direct aeroplanes to the instrument approach correctly, for which they need to see exactly where it is.
+The distance markers are also important so that the controller can maintain a safe separation between aeroplanes.
+
+\paragraph{Success criteria}
+\begin{itemize}
+    \item The line should be in the correct position and direction
+    \item Distance markings should be shown at the correct intervals
+\end{itemize}
 
 
 \subsection{Limitations}
