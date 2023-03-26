@@ -86,7 +86,7 @@
 \date{\today}
 
 % Glossary
-\makeglossaries
+\makenoidxglossaries
 \newglossaryentry{interface}{name=interface, description={An abstract type that describes attributes and methods that classes must implement}}
 \newglossaryentry{airspeed}{name=airspeed, description={The speed of an aircraft relative to the air measured in knots}}
 \newglossaryentry{flightpathangle}{name=flight path angle, description={The angle in degrees of an aircraft relative to the horizon, with negative values being below the horizon}}
@@ -168,6 +168,9 @@ There are existing solutions for real-world training of air traffic controllers,
 Because the solutions for real-world controllers require certification, my solution will focus on public use.
 My solution will aim to improve on the areas that are lacking in the existing publicly available solutions.
 
+This problem is amenable to a computational approach because there is no other way to create this kind of simulation.
+Real-world air traffic control relies heavily on computers.
+This and the use of computational methods will be expanded on in the feature subsections of section \ref{essentialfeatures}.
 
 \subsection{Stakeholders}
 The two primary stakeholders for my solution are hobbyists and air traffic control organizations.
@@ -263,27 +266,39 @@ A simulation of the takeoff procedures of the aeroplane, such as its acceleratio
 Aeroplanes landing can also be largely simplified because below a certain altitude they will not be visible on the radar anyway.
 
 Controllers often direct aeroplanes by telling them to fly on a certain heading.
-The heading of an aeroplane describes the direction it is pointing in which, because of wind, is not necessarily the same as the direction it is travelling in.
+The heading of an aeroplane describes the direction it is pointing in which, because of wind, is not necessarily the same as the direction it is travelling in (see Figure \ref{fig:windtriangle}).
 Therefore controllers have to account for this when giving headings so that the aeroplane's actual track is in the intended direction.
 This is a big part of the controller's job, so it will be necessary to simulate this.
-The input to this system will be a wind direction and a wind speed, live data for which could be obtained from an internet API.
+The input to this will be a wind direction and a wind speed, live data for which could be obtained from an internet API.
 
-\newpage
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\textwidth]{diagrams/windtriangle.png}
+\caption{\label{fig:windtriangle}The wind triangle}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{context/ils.png}
+\caption{\label{fig:ils}\acrfull{ils} (\href{https://commons.wikimedia.org/wiki/User:Fred_the_Oyster}{Fred the Oyster}, \href{https://creativecommons.org/licenses/by-sa/4.0/deed.en}{CC BY-SA 4.0})}
+\end{figure}
+
 \paragraph{Success criteria}
 \begin{itemize}
     \item To simulate the manoeuvring characteristics of a typical airliner, it should take a certain amount of time for an aeroplane to change direction and speed
     \item The aeroplane should take a realistic amount of time to change altitude and heading
     \item Timescales should always be accurate, independent of the performance of the simulation
+    \item The aeroplane's course should be accurately affected by wind
     \item Fifteen or more aeroplanes should be able to be simulated simultaneously while maintaining performance, as this is how many a controller is typically required to control in real life
 \end{itemize}
 
-\subsubsection{Aeroplane instructions}
+\subsubsection{Aeroplane instructions} \label{aeroplaneinstructions}
 In reality, air traffic controllers instruct aeroplane pilots verbally over radio.
-The aeroplanes in my solution will be simulated, so there will be no pilot to hear and parse an audio instruction, e.g. "Air France 354, descend 5,000 feet, QNH 1018".
+The aeroplanes in my solution will be simulated, so there will be no pilot to hear and parse an audio instruction.
 Therefore an alternative method of giving these aeroplanes instructions will be needed.
 The essential instructions necessary to guide an aeroplane to a landing are for it to fly on a \gls{heading} or to a \gls{waypoint}, change altitude or \gls{airspeed}, and perform an \gls{instrumentapproach}.
 
-The solution will create an abstraction of the verbal instructions which hides some detail, for example instead of using the text '[callsign], climb/descend altitude 5,000 feet', the user could type a number into the corresponding box and the plane will decide whether it needs to climb or descend if its current altitude is above or below the entered value.
+The solution will create an abstraction of the verbal instructions which hides some detail, for example the user could type a number into the corresponding box and the plane will decide whether it needs to climb or descend if its current altitude is above or below the entered value.
 To parse the user's input, the program will need to make multiple decisions.
 For example, if the first character of the input to the heading field is an 'L' it would follow the process for instructing a turn to the left.
 Also if the text was the name of a waypoint, it would send an instruction to go direct to that waypoint rather than a heading instruction.
@@ -435,7 +450,7 @@ The initial scale can be calculated from a desired width in nautical miles speci
 From there the user should be able to zoom in or out using the scroll wheel of their mouse.
 Each time the user zooms in or out an increment, the scale value will be multiplied by e.g. 1.1 or 0.9 respectively.
 
-Panning the simulated radar screen will be accomplished by recording the position of the user's mouse on the screen when they first press the right mouse button down, and then moving Godot's virtual camera in the inverse direction to the motion of the mouse relative to that point.
+Panning the simulated radar screen will be accomplished by recording the position of the user's mouse on the screen when they first press the right mouse button down, and then moving a virtual camera in the inverse direction to the motion of the mouse relative to that point.
 
 \subsection{Simulated aeroplanes}
 In order to maintain physical consistency (e.g. if an aeroplane is already in a turn to the right, it will take longer to start turning to the left than if it was not turning), the navigation system will be isolated from the physical simulation and will interact with it by commanding a yaw rate in degrees per second and a \gls{flightpathangle} in degrees.
@@ -446,7 +461,7 @@ I have chosen these parameters to provide a level of abstraction which is suffic
 \hline
 \multicolumn{1}{ |c| }{\textbf{Aeroplane}} \\
 \hline
-Altitude : float \\ 
+TrueAltitude : float \\
 TrueAirspeed : float \\
 TrueHeading : float \\
 PositionNm : Vector2 \\
@@ -461,7 +476,26 @@ void PhysicsUpdate(float) \\
 \end{figure}
 Figure \ref{fig:aeroplaneclass} shows the key attributes and methods of the aeroplane class which will be used.
 Using a class enables many aeroplanes to be simulated at once, where each aeroplane is an instance of the class.
-Keeping track of the many variables of each would otherwise be very difficult.
+Keeping track of the many variables of each necessary for the physics and navigation simulation would otherwise be very difficult.
+\begin{figure}[H]
+\centering
+\begin{tabular}{ |c|c|c| }
+\hline
+Attribute & Units & Valid range \\
+\hline
+TrueAltitude & Feet & $x \geq 0$ \\
+\hline
+TrueAirspeed & Knots & $x \geq 0$ \\
+\hline
+TrueHeading & Degrees & $0 \leq x \leq 360$ \\
+\hline
+\end{tabular}
+\caption{\label{fig:aeroplaneclassinputs}Aeroplane class input validation ranges}
+\end{figure}
+Figure \ref{fig:aeroplaneclassinputs} shows the valid ranges of the attributes of the Aeroplane class.
+Attributes not shown in the table do not require validation because they do not receive user input.
+TrueAltitude must be greater than zero because it represents height above terrain and the aeroplane should not go below it; TrueAirspeed cannot be less than zero because it represents forward speed through the air; and TrueHeading, being a heading, is by definition between zero and 360 degrees.
+Ensuring that these values remain in a valid range means that all areas of the solution know what to expect and do not each have to do their own validation.
 
 \subsubsection{Physics simulation}
 \begin{figure}[H]
@@ -473,7 +507,10 @@ As shown in figure \ref{fig:physics}, the aeroplane physics simulation will use 
 In all calculations the real world time since the last loop iteration will be used to make sure that timescales, e.g. the time it takes for the aircraft to bank left and right, are consistent.
 To simulate those times, the flight parameters will be moved towards the commanded values with a rate multiplied by the time delta on each iteration of the loop.
 Through testing in a flight simulator I found typical values for those rates: yaw will change at a rate of $\frac{1}{2}$ degrees per second (per second); flight path angle at 0.17 degrees per second (per second); and airspeed at 1 knot per second.
+These values will be stored in constant variables.
 This loop should run many times a second to provide sufficient accuracy.
+
+To perform the position update, the true heading of the aeroplane will be converted to a \gls{directionvector} which will be multiplied by the true airspeed. The fact that the ground speed is lower given the same airspeed if the \gls{flightpathangle} deviates from zero will be accounted for.
 
 \subsubsection{Navigation simulation}
 At all times, a separate lateral and vertical guidance mode will be engaged.
@@ -701,11 +738,6 @@ In stable flight the main contributor to this discrepancy is wind, see figure \r
 }
 \end{lstlisting}
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.5\textwidth]{diagrams/windtriangle.png}
-\caption{\label{fig:windtriangle}The wind triangle}
-\end{figure}
 To calculate a \gls{vector} representing the movement of an aeroplane over the ground the heading \gls{vector} and wind \gls{vector} are added, where the \gls{heading} \gls{vector} is the aeroplane's \gls{directionvector} multiplied by its \gls{airspeed} and the wind \gls{vector} is the wind \gls{directionvector} multiplied by the wind speed.
 \lstset{style=csharp}
 \begin{lstlisting}[caption=Extract of the aeroplane physics process]
@@ -763,58 +795,6 @@ TODO: explain aeroplane display system
 \caption{\label{fig:aeroplane}A screenshot of the game showing the aeroplane display}
 \end{figure}
 
-\subsubsection{Leader line}
-TODO
-
-
-\subsubsection{History dots}
-TODO
-
-
-\subsection{Aeroplane Tag}
-TODO: explain the tag
-
-
-\subsubsection{Heading and waypoint field}
-TODO
-
-
-\subsubsection{Approach selector}
-TODO
-
-
-\subsubsection{Altitude field}
-TODO
-
-
-\subsubsection{Speed field}
-TODO
-
-
-\subsubsection{Tag line}
-TODO
-
-
-\subsection{Waypoints}
-TODO
-
-
-\subsection{Geographical features}
-TODO
-
-
-\subsection{Camera pan and zoom}
-TODO
-
-
-\subsection{Radar definitions}
-TODO
-
-
-\subsection{Main menu}
-TODO
-
-
 \section{Evaluation}
 TODO
 \begin{figure}[H]
@@ -836,7 +816,6 @@ TODO
 TODO
 
 
-
 \clearpage
 
 % References
@@ -844,7 +823,7 @@ TODO
 \addcontentsline{toc}{section}{References}
 
 % Glossaries
-\printglossaries
+\printnoidxglossaries
 
 % Appendices
 \begin{appendices}

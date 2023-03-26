@@ -25,3 +25,4 @@ VerticalGuidanceMode
 IVerticalMode
 VerticalMode
 PhysicsUpdate
+TrueAltitude
