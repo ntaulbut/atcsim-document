@@ -277,6 +277,9 @@ The input to this will be a wind direction and a wind speed, live data for which
 \caption{\label{fig:windtriangle}The wind triangle}
 \end{figure}
 
+In addition to the base physics simulation, the aeroplanes will have simulated guidance systems so that they can follow the instructions defined in section \ref{aeroplaneinstructions}, one of the more complex being to follow an instrument landing system path to a landing.
+An instrument landing system uses radio beacons to guide the aircraft laterally (with the localizer) and vertically (the glideslope) to a landing on the runway it is configured at, as shown in figure \ref{fig:ils}.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.6\textwidth]{context/ils.png}
@@ -510,11 +513,13 @@ Through testing in a flight simulator I found typical values for those rates: ya
 These values will be stored in constant variables.
 This loop should run many times a second to provide sufficient accuracy.
 
-To perform the position update, the true heading of the aeroplane will be converted to a \gls{directionvector} which will be multiplied by the true airspeed. The fact that the ground speed is lower given the same airspeed if the \gls{flightpathangle} deviates from zero will be accounted for.
+To perform the position update, the true heading of the aeroplane will be converted to a \gls{directionvector} which will be multiplied by the true airspeed.
+The fact that the ground speed is lower given the same airspeed if the \gls{flightpathangle} deviates from zero will be accounted for.
 
 \subsubsection{Navigation simulation}
 At all times, a separate lateral and vertical guidance mode will be engaged.
-Making lateral and vertical modes independent of each other reduces code duplication because it is often required to have e.g. the same lateral behaviour with multiple vertical behaviours. This also mirrors how autopilots work in reality.
+Making lateral and vertical modes independent of each other reduces code duplication because it is often required to have e.g. the same lateral behaviour with multiple vertical behaviours.
+This also mirrors how autopilots work in reality.
 Every simulation step, the active modes will be asked if they want to change to a different mode, which will be used for example when maintaining a heading while waiting to capture the localizer.
 The modes will each be classes which will inherit from a parent class such as LateralMode, overriding e.g. the RollCommand method to implement their own functionality.
 % The modes will each be classes which will implement \glspl{interface} stating that they include e.g. an update function.
