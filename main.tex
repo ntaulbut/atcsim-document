@@ -256,12 +256,14 @@ These aeroplanes will be abstracted from reality, only simulating the variables 
 For example, lift does not have to be simulated --- instead it can just be stated that the aeroplane is at a particular altitude.
 To make them behave realistically however, it is necessary to simulate abstractions of e.g.
 the pitch of the aeroplane, because this affects how long it takes for the aeroplane to change altitude.
-Because the pitch required to maintain a certain \gls{flightpathangle} changes dependent on factors that would be complicated to simulate, such as lift and speed, I can instead model vertical motion only by the \gls{flightpathangle}, which allows for the same realistic behaviour without having to calculate the actual pitch.
+Because the pitch required to maintain a certain \gls{flightpathangle} changes dependent on factors that would be complicated to simulate, such as lift and speed, I can instead model vertical motion only by the \gls{flightpathangle} (see figure \ref{fig:pitchfpa}), which allows for the same realistic behaviour without having to calculate the pitch.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.7\textwidth]{diagrams/pitchfpa.png}
 \caption{\label{fig:pitchfpa}Pitch and FPA}
 \end{figure}
+
 A simulation of the takeoff procedures of the aeroplane, such as its acceleration on the ground and initial rotation, will not need to be included because the solution is focussed on approach control.
 Aeroplanes landing can also be largely simplified because below a certain altitude they will not be visible on the radar anyway.
 
@@ -279,16 +281,17 @@ The input to this will be a wind direction and a wind speed, live data for which
 
 In addition to the base physics simulation, the aeroplanes will have simulated guidance systems so that they can follow the instructions defined in section \ref{aeroplaneinstructions}, one of the more complex being to follow an instrument landing system path to a landing.
 An instrument landing system uses radio beacons to guide the aircraft laterally (with the localizer) and vertically (the glideslope) to a landing on the runway it is configured at, as shown in figure \ref{fig:ils}.
+This can also be abstracted by not simulating the radio signals themselves.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{context/ils.png}
+\includegraphics[width=0.5\textwidth]{context/ils.png}
 \caption{\label{fig:ils}\acrfull{ils} (\href{https://commons.wikimedia.org/wiki/User:Fred_the_Oyster}{Fred the Oyster}, \href{https://creativecommons.org/licenses/by-sa/4.0/deed.en}{CC BY-SA 4.0})}
 \end{figure}
 
 \paragraph{Success criteria}
 \begin{itemize}
-    \item To simulate the manoeuvring characteristics of a typical airliner, it should take a certain amount of time for an aeroplane to change direction and speed
+    \item The aeroplane should be able to guide itself realistically in following instructions, including on an \acrshort{ils} (\ref{aeroplaneinstructions})
     \item The aeroplane should take a realistic amount of time to change altitude and heading
     \item Timescales should always be accurate, independent of the performance of the simulation
     \item The aeroplane's course should be accurately affected by wind
@@ -328,12 +331,24 @@ This can only be accomplished with a computer because of its unique ability to r
     \item Every time the position updates, a history dot should be created up to a specified number, and they should then follow behind
 \end{itemize}
 
+\subsubsection{Traffic Simulation}
+Once an aeroplane can be simulated, the creation of them must be controlled.
+In the real world, the number of aeroplanes entering the controller's area of responsibility and departing changes based on airline timetables.
+This data is unavailable, so an approximation can be used. Aeroplanes will enter and exit the controller's area of responsibility via certain waypoints.
+
+\paragraph{Success criteria}
+\begin{itemize}
+    \item Aeroplanes should enter the user's area of responsibility periodically from certain waypoints
+    \item Aeroplanes should appear on the screen after taking off from a runway periodically
+\end{itemize}
+
 \subsubsection{Waypoints}
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.7\textwidth]{context/budapest.png}
 \caption{\label{fig:budapest}Map showing waypoints around Budapest International Airport}
 \end{figure}
+
 Waypoints are points, defined by latitude and longitude and given five-letter names, which are used for air navigation.
 They are created specifically for that purpose and usually have no connection to features of the real world\cite{waypoint}.
 A commercial airliner's route from one airport to another --- its flight plan --- is largely defined as a series of waypoints which it will fly between.
@@ -458,6 +473,7 @@ Panning the simulated radar screen will be accomplished by recording the positio
 \subsection{Simulated aeroplanes}
 In order to maintain physical consistency (e.g. if an aeroplane is already in a turn to the right, it will take longer to start turning to the left than if it was not turning), the navigation system will be isolated from the physical simulation and will interact with it by commanding a yaw rate in degrees per second and a \gls{flightpathangle} in degrees.
 I have chosen these parameters to provide a level of abstraction which is sufficiently realistic, while keeping complexity reasonably low.
+
 \begin{figure}[H]
 \centering
 \begin{tabular}{ |l| } 
@@ -477,9 +493,11 @@ void PhysicsUpdate(float) \\
 \end{tabular}
 \caption{\label{fig:aeroplaneclass}Aeroplane class diagram}
 \end{figure}
+
 Figure \ref{fig:aeroplaneclass} shows the key attributes and methods of the aeroplane class which will be used.
 Using a class enables many aeroplanes to be simulated at once, where each aeroplane is an instance of the class.
 Keeping track of the many variables of each necessary for the physics and navigation simulation would otherwise be very difficult.
+
 \begin{figure}[H]
 \centering
 \begin{tabular}{ |c|c|c| }
@@ -495,6 +513,7 @@ TrueHeading & Degrees & $0 \leq x \leq 360$ \\
 \end{tabular}
 \caption{\label{fig:aeroplaneclassinputs}Aeroplane class input validation ranges}
 \end{figure}
+
 Figure \ref{fig:aeroplaneclassinputs} shows the valid ranges of the attributes of the Aeroplane class.
 Attributes not shown in the table do not require validation because they do not receive user input.
 TrueAltitude must be greater than zero because it represents height above terrain and the aeroplane should not go below it; TrueAirspeed cannot be less than zero because it represents forward speed through the air; and TrueHeading, being a heading, is by definition between zero and 360 degrees.
@@ -506,6 +525,7 @@ Ensuring that these values remain in a valid range means that all areas of the s
 \includegraphics{diagrams/flowcharts/aeroplanesimulationprocess.png}
 \caption{\label{fig:physics}Simulation loop}
 \end{figure}
+
 As shown in figure \ref{fig:physics}, the aeroplane physics simulation will use a loop in which it will talk to the navigation system to receive its commands for movement, and then update the flight parameters and re-calculate position.
 In all calculations the real world time since the last loop iteration will be used to make sure that timescales, e.g. the time it takes for the aircraft to bank left and right, are consistent.
 To simulate those times, the flight parameters will be moved towards the commanded values with a rate multiplied by the time delta on each iteration of the loop.
@@ -521,20 +541,80 @@ At all times, a separate lateral and vertical guidance mode will be engaged.
 Making lateral and vertical modes independent of each other reduces code duplication because it is often required to have e.g. the same lateral behaviour with multiple vertical behaviours.
 This also mirrors how autopilots work in reality.
 Every simulation step, the active modes will be asked if they want to change to a different mode, which will be used for example when maintaining a heading while waiting to capture the localizer.
-The modes will each be classes which will inherit from a parent class such as LateralMode, overriding e.g. the RollCommand method to implement their own functionality.
+The modes will each be classes which will inherit from a parent class: LateralMode (figure \ref{fig:lateralmodeclass}) for the lateral modes and VerticalMode (figure \ref{fig:verticalmodeclass}) for the vertical modes, overriding e.g. the RollCommand method to implement their own functionality.
+Because the LateralMode and VerticalMode classes have a common attribute of aeroplane, the aeroplane for which they are providing guidance, this will be in a parent class Mode (figure \ref{fig:guidancemodeclass}) which they will inherit from.
+Figure \ref{fig:vertnav} and \ref{fig:lnav} illustrate how the vertical and lateral guidance modes respectively of an aeroplane will change on certain conditions.
 % The modes will each be classes which will implement \glspl{interface} stating that they include e.g. an update function.
+
+\begin{figure}[H]
+\centering
+\begin{tabular}{ |l| } 
+\hline
+\multicolumn{1}{ |c| }{\textbf{Mode}} \\
+\hline
+aeroplane : Aeroplane \\
+\hline
+\end{tabular}
+\caption{\label{fig:guidancemodeclass}Guidance mode class diagram}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tabular}{ |l| } 
+\hline
+\multicolumn{1}{ |c| }{\textbf{VerticalMode : Mode}} \\
+\hline
+float FlightPathAngleCommand() \\
+VerticalMode? NewMode() \\
+\hline
+\end{tabular}
+\caption{\label{fig:verticalmodeclass}Vertical mode class diagram}
+\end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics{diagrams/vertnav.png}
 \caption{\label{fig:vertnav}State transitions between vertical guidance modes}
 \end{figure}
-\paragraph{Altitude select}
+
+\paragraph{Altitude change modes}
 When an instruction to climb or descend is given a vertical guidance mode such as vertical speed will be engaged.
 The vertical speed mode will control the commanded flight path angle to achieve the desired vertical speed, and then once the aeroplane is calculated to be close enough to the instructed altitude that if it levels off at the standard rate it will arrive at that altitude without over or undershooting, the mode will tell the guidance system to switch to the altitude hold mode.
+Figure \ref{fig:verticalspeedmodeclass} shows the class which will implement the vertical speed mode, overriding the base FlightPathAngleCommand and NewMode methods and adding new attributes.
+The class which implements the altitude hold mode does not override the base methods, which are to return zero for the FlightPathAngleCommand and null (i.e. do not change mode) for the NewMode method; it also does not require additional attributes.
+
+\begin{figure}[H]
+\centering
+\begin{tabular}{ |l| } 
+\hline
+\multicolumn{1}{ |c| }{\textbf{VerticalSpeed : VerticalMode}} \\
+\hline
+float Altitude \\
+float VerticalRate \\
+\hline
+float FlightPathAngleCommand() \\
+VerticalMode? NewMode() \\
+\hline
+\end{tabular}
+\caption{\label{fig:verticalspeedmodeclass}Vertical speed mode class diagram}
+\end{figure}
+
 \paragraph{Glideslope}
 When the aeroplane is cleared for an \acrshort{ils} approach, the active vertical guidance mode will wait until the aeroplane approaches an appropriate distance from the glideslope, and then tell the guidance system to switch to the glideslope follow mode which will command a pitch down to match the glideslope angle.
 This will require calculating the current height of the glideslope beam at the aeroplane's position based on the position and elevation of the transmitter; and the angle of the glideslope.
+
+\begin{figure}[H]
+\centering
+\begin{tabular}{ |l| } 
+\hline
+\multicolumn{1}{ |c| }{\textbf{LateralMode : Mode}} \\
+\hline
+float RollCommand() \\
+LateralMode? NewMode() \\
+\hline
+\end{tabular}
+\caption{\label{fig:lateralmodeclass}Lateral mode class diagram}
+\end{figure}
 
 \begin{figure}[H]
 \centering
@@ -553,6 +633,7 @@ Each will be a separate 'scene' in Godot, which can be created independently.
 \includegraphics[width=\textwidth]{diagrams/mainmenu.png}
 \caption{\label{fig:main_menu_design}Main menu screen design}
 \end{figure}
+
 Figure \ref{fig:main_menu_design} shows an approximate and simple design for a main menu.
 A dropdown menu will be present which will be populated with the airport options available stored on the computer, with one of them selected by default.
 A button directly below it will initiate the gameplay.
@@ -565,6 +646,7 @@ Some text can be shown to give some help with how to use the simulation.
 \includegraphics[width=0.5\textwidth]{diagrams/aeroplane_design.png}
 \caption{\label{fig:aeroplane_design}Design of the aeroplane display}
 \end{figure}
+
 Figure \ref{fig:aeroplane_design} shows the four main features of the aeroplane interface.
 \begin{itemize}
     \item The blip: a dot or other symbol showing the last known position of the aeroplane, which the other features are centred around.
@@ -588,6 +670,7 @@ Therefore to strike the best balance between usability and realism, I will use a
 \includegraphics{diagrams/waypointdesign.png}
 \caption{\label{fig:waypointdesign}Waypoint design}
 \end{figure}
+
 Waypoints should appear on the screen as in the diagram, with a symbol depending on their type and text with their name next to them.
 
 
