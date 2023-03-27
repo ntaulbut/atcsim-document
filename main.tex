@@ -543,20 +543,13 @@ Making lateral and vertical modes independent of each other reduces code duplica
 This also mirrors how autopilots work in reality.
 Every simulation step, the active modes will be asked if they want to change to a different mode, which will be used for example when maintaining a heading while waiting to capture the localizer.
 The modes will each be classes which will inherit from a parent class: LateralMode (figure \ref{fig:lateralmodeclass}) for the lateral modes and VerticalMode (figure \ref{fig:verticalmodeclass}) for the vertical modes, overriding e.g. the RollCommand method to implement their own functionality.
-Because the LateralMode and VerticalMode classes have a common attribute of aeroplane, the aeroplane for which they are providing guidance, this will be in a parent class Mode (figure \ref{fig:guidancemodeclass}) which they will inherit from.
+Because the LateralMode and VerticalMode classes have a common attribute of aeroplane, the aeroplane for which they are providing guidance, this will be in a parent class Mode with that attribute which they will inherit from.
 Figure \ref{fig:vertnav} and \ref{fig:lnav} illustrate how the vertical and lateral guidance modes respectively of an aeroplane will change on certain conditions.
 % The modes will each be classes which will implement \glspl{interface} stating that they include e.g. an update function.
-
 \begin{figure}[H]
 \centering
-\begin{tabular}{ |l| } 
-\hline
-\multicolumn{1}{ |c| }{\textbf{Mode}} \\
-\hline
-aeroplane : Aeroplane \\
-\hline
-\end{tabular}
-\caption{\label{fig:guidancemodeclass}Guidance mode class diagram}
+\includegraphics{diagrams/vertnav.png}
+\caption{\label{fig:vertnav}State transitions between vertical guidance modes}
 \end{figure}
 
 \begin{figure}[H]
@@ -565,17 +558,11 @@ aeroplane : Aeroplane \\
 \hline
 \multicolumn{1}{ |c| }{\textbf{VerticalMode : Mode}} \\
 \hline
-float FlightPathAngleCommand() \\
-VerticalMode? NewMode() \\
+virtual float FlightPathAngleCommand() \\
+virtual VerticalMode? NewMode() \\
 \hline
 \end{tabular}
 \caption{\label{fig:verticalmodeclass}Vertical mode class diagram}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics{diagrams/vertnav.png}
-\caption{\label{fig:vertnav}State transitions between vertical guidance modes}
 \end{figure}
 
 \paragraph{Altitude change modes}
@@ -593,8 +580,8 @@ The class which implements the altitude hold mode does not override the base met
 float Altitude \\
 float VerticalRate \\
 \hline
-float FlightPathAngleCommand() \\
-VerticalMode? NewMode() \\
+override float FlightPathAngleCommand() \\
+override VerticalMode? NewMode() \\
 \hline
 \end{tabular}
 \caption{\label{fig:verticalspeedmodeclass}Vertical speed mode class diagram}
@@ -602,7 +589,7 @@ VerticalMode? NewMode() \\
 
 \paragraph{Glideslope}
 % When the aeroplane is cleared for an \acrshort{ils} approach, the active vertical guidance mode will wait until the aeroplane approaches an appropriate distance from the glideslope, and then tell the guidance system to switch to the glideslope follow mode which will command a pitch down to match the glideslope angle.
-When the aeroplane is cleared for an \acrshort{ils} approach, the vertical guidance mode will be set to the glideslope mode.
+When the aeroplane is cleared for an \acrshort{ils} approach, the vertical guidance mode will be set to the glideslope mode (figure \ref{fig:glideslopemodeclass}).
 It will calculate the current height of the glideslope beam at the aeroplane's position based on the position and elevation of the transmitter; and the angle of the glideslope.
 It will subtract the aeroplane's height from the height of the glideslope to get the deviation from it in feet, and then use a PID Controller\footnote{\url{wikipedia.com}} to determine a flight path angle to correct on to the glideslope and follow it down.
 
@@ -614,23 +601,10 @@ It will subtract the aeroplane's height from the height of the glideslope to get
 \hline
 approach Approach \\
 \hline
-float FlightPathAngleCommand() \\
+override float FlightPathAngleCommand() \\
 \hline
 \end{tabular}
 \caption{\label{fig:glideslopemodeclass}Glideslope mode class diagram}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\begin{tabular}{ |l| } 
-\hline
-\multicolumn{1}{ |c| }{\textbf{LateralMode : Mode}} \\
-\hline
-float RollCommand() \\
-LateralMode? NewMode() \\
-\hline
-\end{tabular}
-\caption{\label{fig:lateralmodeclass}Lateral mode class diagram}
 \end{figure}
 
 \begin{figure}[H]
@@ -639,11 +613,39 @@ LateralMode? NewMode() \\
 \caption{\label{fig:lnav}State transitions between lateral modes}
 \end{figure}
 
+\begin{figure}[H]
+\centering
+\begin{tabular}{ |l| } 
+\hline
+\multicolumn{1}{ |c| }{\textbf{LateralMode : Mode}} \\
+\hline
+virtual float RollCommand() \\
+virtual LateralMode? NewMode() \\
+\hline
+\end{tabular}
+\caption{\label{fig:lateralmodeclass}Lateral mode class diagram}
+\end{figure}
+
 \paragraph{Heading select}
-When receiving a heading instruction, the heading select mode will be set.
+When receiving a heading instruction, the heading select mode (figure \ref{fig:headingselectmodeclass}) will be set.
 In addition to the heading to be followed, the instruction should include whether the aeroplane should turn in the quickest direction or a specific direction.
 If the quickest direction is instructed, it will determine it by comparing the difference in degrees between the current and selected heading assuming a turn in each direction and see which is the smallest.
 While the difference between the current and selected heading is less than that needed to roll out of the turn without overshooting the selected heading, it will command the standard turn rate in the specified direction.
+
+\begin{figure}[H]
+\centering
+\begin{tabular}{ |l| } 
+\hline
+\multicolumn{1}{ |c| }{\textbf{HeadingSelect : LateralMode}} \\
+\hline
+float selectedHeading \\
+TurnDirection turnDirection \\
+\hline
+override float RollCommand() \\
+\hline
+\end{tabular}
+\caption{\label{fig:headingselectmodeclass}Heading select mode class diagram}
+\end{figure}
 
 \subsection{Interface}
 Because it is effective in ATC-Sim (section \ref{atc-sim}), the simulator will have two main screens: a main menu where the user can select which airport they want to control at, and a separate gameplay screen they will be taken to where that will take place.

@@ -30,3 +30,5 @@ NewMode
 FlightPathAngleCommand
 VerticalSpeed
 VerticalRate
+HeadingSelect
+selectedHeading
