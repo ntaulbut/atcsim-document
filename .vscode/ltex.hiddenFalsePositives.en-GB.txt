@@ -25,3 +25,8 @@
 {"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QHeadingSelect : LateralMode float selectedHeading TurnDirection turnDirection float RollCommand() Heading select mode class diagram\\E$"}
 {"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QGlideslope : VerticalMode approach Approach override float FlightPathAngleCommand() Glideslope mode class diagram\\E$"}
 {"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QHeadingSelect : LateralMode float selectedHeading TurnDirection turnDirection override float RollCommand() Heading select mode class diagram\\E$"}
+
+{"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QLocalizer : LateralMode approach Approach override float RollCommand() Localizer mode class diagram\\E$"}
+{"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QLocalizer : LateralMode approach Approach float Deviation() override float RollCommand() Localizer mode class diagram\\E$"}
+{"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QGlideslope : VerticalMode approach Approach float Deviation() override float FlightPathAngleCommand() Glideslope mode class diagram\\E$"}
+{"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QDirect : LateralMode Waypoint waypoint float TrackDelta() override float RollCommand() override LateralMode?\\E$"}

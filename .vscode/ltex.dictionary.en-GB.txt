@@ -32,3 +32,5 @@ VerticalSpeed
 VerticalRate
 HeadingSelect
 selectedHeading
+
+TrackDelta

@@ -485,7 +485,6 @@ TrueAltitude : float \\
 TrueAirspeed : float \\
 TrueHeading : float \\
 PositionNm : Vector2 \\
-GroundVector : Vector2 \\
 LateralGuidanceMode : LateralMode \\
 VerticalGuidanceMode : VerticalMode \\
 \hline
@@ -498,6 +497,7 @@ void PhysicsUpdate(float) \\
 Figure \ref{fig:aeroplaneclass} shows the key attributes and methods of the aeroplane class which will be used.
 Using a class enables many aeroplanes to be simulated at once, where each aeroplane is an instance of the class.
 Keeping track of the many variables of each necessary for the physics and navigation simulation would otherwise be very difficult.
+The attributes have been chosen because they are absolutely necessary for the simulation and a controller is concerned with them in real life.
 
 \begin{figure}[H]
 \centering
@@ -535,7 +535,13 @@ These values will be stored in constant variables.
 This loop should run many times a second to provide sufficient accuracy.
 
 To perform the position update, the true heading of the aeroplane will be converted to a \gls{directionvector} which will be multiplied by the true airspeed.
-The fact that the ground speed is lower given the same airspeed if the \gls{flightpathangle} deviates from zero will be accounted for.
+The fact that the ground speed is lower given the same airspeed if the \gls{flightpathangle} deviates from zero will be accounted for using trigonometry.
+Then the direction of the wind will be converted to a \gls{directionvector} which will be multiplied by the wind speed.
+These vectors will then be added together to produce the ground vector.
+
+\paragraph{Testing}
+To test that the aeroplane responds correctly to wind, it should be tested with all different directions and plausible speeds of wind, while flying on different headings.
+For example a 10 knot wind at a 90-degree angle to the aeroplane's heading should alter its course and increase its ground speed, but at an angle opposite to the aeroplane's heading it should only decrease its ground speed.
 
 \subsubsection{Navigation simulation}
 At all times, a separate lateral and vertical guidance mode will be engaged.
@@ -590,8 +596,14 @@ override VerticalMode? NewMode() \\
 \paragraph{Glideslope}
 % When the aeroplane is cleared for an \acrshort{ils} approach, the active vertical guidance mode will wait until the aeroplane approaches an appropriate distance from the glideslope, and then tell the guidance system to switch to the glideslope follow mode which will command a pitch down to match the glideslope angle.
 When the aeroplane is cleared for an \acrshort{ils} approach, the vertical guidance mode will be set to the glideslope mode (figure \ref{fig:glideslopemodeclass}).
-It will calculate the current height of the glideslope beam at the aeroplane's position based on the position and elevation of the transmitter; and the angle of the glideslope.
-It will subtract the aeroplane's height from the height of the glideslope to get the deviation from it in feet, and then use a PID Controller\footnote{\url{wikipedia.com}} to determine a flight path angle to correct on to the glideslope and follow it down.
+It will use trigonometry calculate the current height of the glideslope beam at the aeroplane's position based on the position and elevation of the transmitter; and the angle of the glideslope (see figure \ref{fig:glideslope}).
+It will subtract the aeroplane's height from the height of the glideslope to get the deviation from it in feet, and then use a PID Controller\footnote{\url{https://en.wikipedia.org/wiki/PID_controller}} to determine a flight path angle to correct on to the glideslope and follow it down.
+
+\begin{figure}[H]
+\centering
+\includegraphics{diagrams/glideslope.png}
+\caption{\label{fig:glideslope}Glideslope simulation diagram}
+\end{figure}
 
 \begin{figure}[H]
 \centering
@@ -601,6 +613,7 @@ It will subtract the aeroplane's height from the height of the glideslope to get
 \hline
 approach Approach \\
 \hline
+float Deviation() \\
 override float FlightPathAngleCommand() \\
 \hline
 \end{tabular}
@@ -627,10 +640,10 @@ virtual LateralMode? NewMode() \\
 \end{figure}
 
 \paragraph{Heading select}
-When receiving a heading instruction, the heading select mode (figure \ref{fig:headingselectmodeclass}) will be set.
+When receiving a heading instruction, the heading select lateral mode (figure \ref{fig:headingselectmodeclass}) will be set.
 In addition to the heading to be followed, the instruction should include whether the aeroplane should turn in the quickest direction or a specific direction.
 If the quickest direction is instructed, it will determine it by comparing the difference in degrees between the current and selected heading assuming a turn in each direction and see which is the smallest.
-While the difference between the current and selected heading is less than that needed to roll out of the turn without overshooting the selected heading, it will command the standard turn rate in the specified direction.
+While the difference between the current and selected heading is less than that needed to roll out of the turn without overshooting, it will command the standard turn rate in the specified direction.
 
 \begin{figure}[H]
 \centering
@@ -646,6 +659,75 @@ override float RollCommand() \\
 \end{tabular}
 \caption{\label{fig:headingselectmodeclass}Heading select mode class diagram}
 \end{figure}
+
+\paragraph{Localizer}
+When the aeroplane is cleared for an \acrshort{ils} approach, the lateral guidance mode will be set to the localizer mode (figure \ref{fig:localizermodeclass}).
+It will calculate the aeroplane's perpendicular distance (marked $x$ on figure \ref{fig:localizer}) from the localizer beam by calculating the bearing between the aeroplane's position and the localizer transmitter's position and comparing it with the \gls{heading} of the beam, then using trigonometry to calculate it from that angle.
+
+\begin{figure}[H]
+\centering
+\includegraphics{diagrams/localizer.png}
+\caption{\label{fig:localizer}Localizer simulation diagram}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tabular}{ |l| } 
+\hline
+\multicolumn{1}{ |c| }{\textbf{Localizer : LateralMode}} \\
+\hline
+approach Approach \\
+\hline
+float Deviation() \\
+override float RollCommand() \\
+\hline
+\end{tabular}
+\caption{\label{fig:localizermodeclass}Localizer mode class diagram}
+\end{figure}
+
+\paragraph{Direct to waypoint}
+When receiving an instruction to fly direct to a waypoint, the direct lateral guidance mode (figure \ref{fig:directmodeclass}) will be set.
+Because the aeroplane is affected by wind, the system must know the actual track over ground of the aeroplane so that it can travel in the direction of the selected waypoint, even though its commands to the physical simulation only directly affect heading.
+To determine the track in degrees to target to fly towards the waypoint, the bearing must be calculated (see figure \ref{fig:directto}).
+While the difference between the current and required track is less than that needed to roll out of the turn without overshooting, it will command the standard turn rate in the appropriate direction.
+Once the distance to the selected waypoint is very small, the direct mode should tell the aeroplane to switch to a heading select mode maintaining the present heading.
+Otherwise, the aeroplane would attempt to circle back around to the waypoint after flying over it which is not realistic or desired behaviour.
+
+\begin{figure}[H]
+\centering
+\includegraphics{diagrams/directto.png}
+\caption{\label{fig:directto}Relevance of bearing in flying to a point}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tabular}{ |l| } 
+\hline
+\multicolumn{1}{ |c| }{\textbf{Direct : LateralMode}} \\
+\hline
+Waypoint waypoint \\
+\hline
+float TrackDelta() \\
+override float RollCommand() \\
+override LateralMode? NewMode() \\
+\hline
+\end{tabular}
+\caption{\label{fig:directmodeclass}Direct mode class diagram}
+\end{figure}
+
+\paragraph{Testing}
+All of these subsystems will have to be tested as they are developed. The following data should be used during the iterative development:
+\begin{itemize}
+    \item The altitude changes modes should be tested by giving instructions with varying differences in height from the aeroplane's current height, for example giving an instruction to climb to the altitude the aeroplane is already at or close to, or very far from, to ensure it acts correctly.
+    \item The glideslope simulation should be tested with a variety of different glideslope angles, from 3 to 5 degrees, to confirm it can handle all of them.
+    The aeroplane should be flown towards it at different airspeeds within a realistic range such as between 180 and 200 knots.
+    \item The heading select mode should be tested by giving a range of different headings and confirming it always turns in the quickest direction when told to.
+    Behaviour should also always be consistent when for example giving an instruction to fly a heading the aeroplane is already on or close to.
+    \item To test the localizer, the aeroplane should be flown towards it at different plausible angles and airspeeds to confirm it behaves realistically when having to make a sharper turn.
+    \item To test the direct to waypoint functionality, the aeroplane should be instructed to fly to waypoints that are in a variety of different positions relative to it and its direction of travel.
+    This would confirm that it is capable of for example making a 180-degree turn to fly towards a waypoint which is behind it.
+\end{itemize}
+
 
 \subsection{Interface}
 Because it is effective in ATC-Sim (section \ref{atc-sim}), the simulator will have two main screens: a main menu where the user can select which airport they want to control at, and a separate gameplay screen they will be taken to where that will take place.
