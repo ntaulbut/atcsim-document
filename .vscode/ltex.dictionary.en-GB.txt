@@ -36,3 +36,6 @@ selectedHeading
 TrackDelta
 displayPositionNm
 AeroplaneDisplay
+
+GeoJSON
+LineStrings

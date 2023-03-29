@@ -397,9 +397,15 @@ This data will ultimately be represented using many latitude and longitude point
 \end{itemize}
 
 \subsubsection{Extended centrelines}
-For every instrument approach (\acrshort{ils}) available at the airport the user is controlling at, a line extending from the threshold of the relevant runway in the direction of the localizer should be displayed and distance markers should be shown along it.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{context/centrelines.jpg}
+\caption{\label{fig:centrelines}Extended centrelines in another solution}
+\end{figure}
+For every instrument approach (\acrshort{ils}) available at the airport the user is controlling at, a line extending from the threshold of the relevant runway in the direction of the localizer should be displayed and distance markers should be shown along it (like in figure \ref{fig:centrelines}).
 As in real life, this feature is vital for the user to be able to direct aeroplanes to the instrument approach correctly, for which they need to see exactly where it is.
 The distance markers are also important so that the controller can maintain a safe separation between aeroplanes.
+This feature would make a big improvement over ATC-Sim (section \ref{atc-sim}).
 
 \paragraph{Success criteria}
 \begin{itemize}
@@ -408,6 +414,7 @@ The distance markers are also important so that the controller can maintain a sa
 \end{itemize}
 
 
+\clearpage
 \subsection{Limitations}
 A few limitations must be stated to prevent the solution from becoming overly complex and to limit the scope.
 They are as follows:
@@ -770,7 +777,8 @@ Figure \ref{fig:aeroplane_design} shows the four main features of the aeroplane 
 \caption{\label{fig:aeroplane_design}Design of the aeroplane display}
 \end{figure}
 
-The position of the aeroplane display on the screen will be separated from the physical position of the aeroplane in the simulation, and calculated by multiplying that position by the scale factor. This also enables the functionality of the position of the aircraft only updating every 4 seconds while the actual position is still constantly changing, by keeping a copy of the last updated position in an attribute displayPositionNm (figure \ref{fig:aeroplanedisplayclass}).
+The position of the aeroplane display on the screen will be separated from the physical position of the aeroplane in the simulation, and calculated by multiplying that position by the scale factor.
+This also enables the functionality of the position of the aircraft only updating every 4 seconds while the actual position is still constantly changing, by keeping a copy of the last updated position in an attribute displayPositionNm (figure \ref{fig:aeroplanedisplayclass}).
 
 \begin{figure}[H]
 \centering
@@ -786,11 +794,27 @@ Vector2 displayPositionNm \\
 \end{figure}
 
 \paragraph{Usability features}
-To make the tag more usable, the user should be able to use the tab key to cycle through the available input boxes. This means they have to move between using the keyboard and the mouse less, saving time when making instructions.
+To make the tag more usable, the user should be able to use the tab key to cycle through the available input boxes.
+This means they have to move between using the keyboard and the mouse less, saving time when making instructions.
 
 \subsection{Traffic simulation}
 The traffic simulation system will run in a loop, incrementing a timer each iteration by how much time has passed since the previous iteration.
 It will then check if that time has exceeded the configured time interval for an arrival aeroplane appearing, and reset the timer before doing that if so.
+A list of entry points defined by a waypoint and an altitude will be configured for each airport at which the system will add an aeroplane.
+All added aeroplanes 
+
+The same system will be used to add departing aeroplanes, which will be added from a runway selected by the user.
+Departing aeroplanes will be randomly assigned one of certain exit waypoints which the user will have to guide them to, similarly to a successful feature of ATC-Sim (section \ref{atc-sim}) which creates interesting scenarios.
+
+\subsection{Terrain drawing}
+When the user first starts the simulation at an airport, the system will loop through the coastline data associated with the airport (stored in GeoJSON format\footnote{\url{https://en.wikipedia.org/wiki/GeoJSON}}, consisting of LineStrings) calculating the relative position in nautical miles of the coordinates from the reference point, storing them in a list.
+This can be done once at the start to save performance because it only has to be calculated once.
+Then to draw the lines on the screen this list will be iterated through, and the values will be multiplied by the scale.
+When the scale changes, they must then be re-drawn from this list.
+
+\paragraph{Testing}
+During development, data for a small geographical area should be inputted to more easily see problems, and larger areas to validate it functions properly.
+
 
 \subsection{Waypoints}
 \begin{figure}[H]
@@ -803,6 +827,13 @@ Waypoints should appear on the screen as in the diagram, with a symbol depending
 Data about their position, type, and name will need to be stored.
 When the user first starts the simulation at a particular airport, the system will loop through all the stored waypoints for that airport and add them to a list that can be accessed by the aeroplanes to implement their direct to waypoint navigation functionality.
 Each waypoint will individually adjust their position when the scale changes to keep themselves in an accurate position on the screen, improving greatly on their implementation in ATC-Sim (section \ref{atc-sim}).
+
+
+\subsection{Extended centrelines}
+The extended centrelines must be re-drawn every time the scale changes.
+The main line can be drawn between a point at the threshold of the runway that the \acrshort{ils} approach is for, and a point in the direction of the heading of the runway from that point.
+The length of this line will be calculated by multiplying the number of distance markers to be shown by the distance between them, to ensure that the line doesn't extend beyond or fall before any markers.
+The distance markers will be shown by starting with a point at an interval along the main line, and drawing a perpendicular line.
 
 
 \clearpage
