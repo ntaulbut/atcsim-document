@@ -34,3 +34,5 @@ HeadingSelect
 selectedHeading
 
 TrackDelta
+displayPositionNm
+AeroplaneDisplay

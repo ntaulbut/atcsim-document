@@ -718,7 +718,7 @@ override LateralMode? NewMode() \\
 \paragraph{Testing}
 All of these subsystems will have to be tested as they are developed. The following data should be used during the iterative development:
 \begin{itemize}
-    \item The altitude changes modes should be tested by giving instructions with varying differences in height from the aeroplane's current height, for example giving an instruction to climb to the altitude the aeroplane is already at or close to, or very far from, to ensure it acts correctly.
+    \item The altitude change modes should be tested by giving instructions with varying differences in height from the aeroplane's current height, for example giving an instruction to climb to the altitude the aeroplane is already at or close to, or very far from, to ensure it acts correctly.
     \item The glideslope simulation should be tested with a variety of different glideslope angles, from 3 to 5 degrees, to confirm it can handle all of them.
     The aeroplane should be flown towards it at different airspeeds within a realistic range such as between 180 and 200 knots.
     \item The heading select mode should be tested by giving a range of different headings and confirming it always turns in the quickest direction when told to.
@@ -746,12 +746,15 @@ A button directly below it will initiate the gameplay.
 This should be fairly intuitive and usable.
 Some text can be shown to give some help with how to use the simulation.
 
-\subsubsection{Displaying aeroplanes}
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.5\textwidth]{diagrams/aeroplane_design.png}
-\caption{\label{fig:aeroplane_design}Design of the aeroplane display}
-\end{figure}
+\subsubsection{Aeroplanes}
+The interface for the aeroplanes comprises both displaying the necessary information about them, and being able to give instructions to them.
+As described in section \ref{existingsolutions}, there are various approaches to giving instructions to the aeroplanes.
+One is to use text input.
+The problem with this is that, especially for users who are slow at typing, it may be slow to use; also the user could make a typo which would require them to type the instruction out again.
+Another approach is to use mouse movements.
+This would be faster and more intuitive to use but would compromise on realism and might not enable me to offer the complex set of instructions necessary.
+Therefore to strike the best balance between usability and realism, I will use a system in which the user enters values into input boxes on a tag next to the aeroplane.
+The tag will serve the dual purpose of displaying information and allowing the user to give instructions.
 
 Figure \ref{fig:aeroplane_design} shows the four main features of the aeroplane interface.
 \begin{itemize}
@@ -761,14 +764,33 @@ Figure \ref{fig:aeroplane_design} shows the four main features of the aeroplane 
     \item The tag: a box which can be dragged around relative to the blip showing information about the aeroplane; it will also be used to give instructions to the aeroplane.
 \end{itemize}
 
-\subsubsection{Giving instructions to aeroplanes}
-As described in section \ref{existingsolutions}, there are various approaches to this.
-One is to use text input.
-The problem with this is that, especially for users who are slow at typing, it may be slow to use; also the user could make a typo which would require them to type the instruction out again.
-Another approach is to use mouse movements.
-This would be faster and more intuitive to use but would compromise on realism and might not enable me to offer the complex set of instructions necessary.
-Therefore to strike the best balance between usability and realism, I will use a system in which the user enters values into input boxes on the tags next to the aeroplane, and more complicated options will be presented through drop-down menus on the tag.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.5\textwidth]{diagrams/aeroplane_design.png}
+\caption{\label{fig:aeroplane_design}Design of the aeroplane display}
+\end{figure}
 
+The position of the aeroplane display on the screen will be separated from the physical position of the aeroplane in the simulation, and calculated by multiplying that position by the scale factor. This also enables the functionality of the position of the aircraft only updating every 4 seconds while the actual position is still constantly changing, by keeping a copy of the last updated position in an attribute displayPositionNm (figure \ref{fig:aeroplanedisplayclass}).
+
+\begin{figure}[H]
+\centering
+\begin{tabular}{ |l| } 
+\hline
+\multicolumn{1}{ |c| }{\textbf{AeroplaneDisplay}} \\
+\hline
+Aeroplane aeroplane \\
+Vector2 displayPositionNm \\
+\hline
+\end{tabular}
+\caption{\label{fig:aeroplanedisplayclass}Aeroplane display class diagram}
+\end{figure}
+
+\paragraph{Usability features}
+To make the tag more usable, the user should be able to use the tab key to cycle through the available input boxes. This means they have to move between using the keyboard and the mouse less, saving time when making instructions.
+
+\subsection{Traffic simulation}
+The traffic simulation system will run in a loop, incrementing a timer each iteration by how much time has passed since the previous iteration.
+It will then check if that time has exceeded the configured time interval for an arrival aeroplane appearing, and reset the timer before doing that if so.
 
 \subsection{Waypoints}
 \begin{figure}[H]
@@ -778,10 +800,9 @@ Therefore to strike the best balance between usability and realism, I will use a
 \end{figure}
 
 Waypoints should appear on the screen as in the diagram, with a symbol depending on their type and text with their name next to them.
-
-
-\subsection{Usability features}
-TODO
+Data about their position, type, and name will need to be stored.
+When the user first starts the simulation at a particular airport, the system will loop through all the stored waypoints for that airport and add them to a list that can be accessed by the aeroplanes to implement their direct to waypoint navigation functionality.
+Each waypoint will individually adjust their position when the scale changes to keep themselves in an accurate position on the screen, improving greatly on their implementation in ATC-Sim (section \ref{atc-sim}).
 
 
 \clearpage

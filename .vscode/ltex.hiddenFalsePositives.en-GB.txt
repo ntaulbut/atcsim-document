@@ -30,3 +30,5 @@
 {"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QLocalizer : LateralMode approach Approach float Deviation() override float RollCommand() Localizer mode class diagram\\E$"}
 {"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QGlideslope : VerticalMode approach Approach float Deviation() override float FlightPathAngleCommand() Glideslope mode class diagram\\E$"}
 {"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QDirect : LateralMode Waypoint waypoint float TrackDelta() override float RollCommand() override LateralMode?\\E$"}
+{"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QDirect : LateralMode Aeroplane aeroplane Vector2 displayPositionNm Aeroplane display class diagram\\E$"}
+{"rule":"ENGLISH_WORD_REPEAT_RULE","sentence":"^\\QAeroplaneDisplay Aeroplane aeroplane Vector2 displayPositionNm Aeroplane display class diagram\\E$"}
