@@ -238,7 +238,7 @@ Buttons on the side allow the user to change altitude, speed, and heading, or th
 Once values have been changed, a button must be pressed to confirm or cancel the instructions.
 A problem is that an instruction is also confirmed when the user clicks away or onto another aeroplane, potentially leading to confirming an instruction the user didn't mean to.
 Text next to each aeroplane displays their current altitude, heading, and speed.
-A limited number of waypoints are available which aeroplane can be directed to by clicking and dragging to them.
+A limited number of waypoints are available which aeroplanes can be directed to by clicking and dragging to them.
 The coastline is shown with overly simple lines.
 A limited number of customization options are available, such as changing the aeroplane icons.
 Another issue is that the user can only give altitude instructions in increments of thousands of feet, whereas it is very common in reality for controllers to give instructions involving hundreds of feet.
@@ -475,8 +475,7 @@ The values in nautical miles can then simply be multiplied by this factor.
 The initial scale can be calculated from a desired width in nautical miles specific to each airport configuration.
 From there the user should be able to zoom in or out using the scroll wheel of their mouse.
 Each time the user zooms in or out an increment, the scale value will be multiplied by e.g. 1.1 or 0.9 respectively.
-
-Panning the simulated radar screen will be accomplished by recording the position of the user's mouse on the screen when they first press the right mouse button down, and then moving a virtual camera in the inverse direction to the motion of the mouse relative to that point.
+Panning the simulated radar screen will be accomplished by recording the position of the user's mouse on the screen when they first press the right mouse button down, and then moving a virtual camera in the inverse direction to the motion of the mouse relative to that point. This will be very usable for the user, because it is similar to other solutions.
 
 \subsection{Simulated aeroplanes}
 In order to maintain physical consistency (e.g. if an aeroplane is already in a turn to the right, it will take longer to start turning to the left than if it was not turning), the navigation system will be isolated from the physical simulation and will interact with it by commanding a yaw rate in degrees per second and a \gls{flightpathangle} in degrees.
@@ -771,6 +770,10 @@ Figure \ref{fig:aeroplane_design} shows the four main features of the aeroplane 
     \item The tag: a box which can be dragged around relative to the blip showing information about the aeroplane; it will also be used to give instructions to the aeroplane.
 \end{itemize}
 
+The input boxes on the tag will check if the user's input is an integer, within a reasonable range, before sending the appropriate instruction event to the aeroplane simulation.
+When e.g. an altitude is assigned with the input box, the value inputted will remain there so that the user can see what altitude they assigned.
+If the user's input is invalid, or they click away from the field before sending the instruction by pressing enter, it will revert the contents of the input box to before the user started editing it.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.5\textwidth]{diagrams/aeroplane_design.png}
@@ -793,9 +796,18 @@ Vector2 displayPositionNm \\
 \caption{\label{fig:aeroplanedisplayclass}Aeroplane display class diagram}
 \end{figure}
 
-\paragraph{Usability features}
-To make the tag more usable, the user should be able to use the tab key to cycle through the available input boxes.
-This means they have to move between using the keyboard and the mouse less, saving time when making instructions.
+\paragraph{Usability}
+\begin{itemize}
+    \item Tooltips on each input field or text label on the aeroplane tag will be shown so that the user can easily see what they show or what their purpose is.
+    \item Any inputs to the input boxes should be expected to be in units familiar to the user, for example the altitude field will accept a number in hundreds of feet.
+    \item To make the aeroplane tag more usable, the user should be able to use the tab key to cycle through the available input boxes.
+    This means they have to move between using the keyboard and the mouse less, saving time when making instructions.
+\end{itemize}
+
+\paragraph{Testing}
+During development, the input validation should be tested with a variety of different normal, boundary, and error values.
+For example 0, 360, 180, 361, "aaa", could be entered into the heading field.
+After development, the time it takes to make an instruction should be measured to see if the success criteria have been achieved.
 
 \subsection{Traffic simulation}
 The traffic simulation system will run in a loop, incrementing a timer each iteration by how much time has passed since the previous iteration.
@@ -828,6 +840,9 @@ Data about their position, type, and name will need to be stored.
 When the user first starts the simulation at a particular airport, the system will loop through all the stored waypoints for that airport and add them to a list that can be accessed by the aeroplanes to implement their direct to waypoint navigation functionality.
 Each waypoint will individually adjust their position when the scale changes to keep themselves in an accurate position on the screen, improving greatly on their implementation in ATC-Sim (section \ref{atc-sim}).
 
+\paragraph{Testing}
+This system should be tested during development with a smaller, example set of waypoints of different types, so their positions relative to each other can be confirmed.
+A larger set can then be used to test performance.
 
 \subsection{Extended centrelines}
 The extended centrelines must be re-drawn every time the scale changes.
@@ -835,6 +850,9 @@ The main line can be drawn between a point at the threshold of the runway that t
 The length of this line will be calculated by multiplying the number of distance markers to be shown by the distance between them, to ensure that the line doesn't extend beyond or fall before any markers.
 The distance markers will be shown by starting with a point at an interval along the main line, and drawing a perpendicular line.
 
+\paragraph{Testing}
+The input to this system is a list of \acrshort{ils} approaches, so this will be used to test it.
+It can then be checked that they appear in the correct position and direction.
 
 \clearpage
 \section{Development}
@@ -864,7 +882,7 @@ It also provides data types such as vectors.
 % \end{center}
 
 
-\subsection{Mapping the real world onto the screen}
+\subsection{Representing space}
 Several features of my solution need to work with real-world points, such as \glspl{waypoint}, defined by latitudes and longitudes.
 To make these easier to work with, I decided to convert their positions from latitudes and longitudes into Cartesian coordinates, with the screen centre as (0, 0).
 To do this, I would need to assign the centre of the screen a latitude and longitude, and then calculate the point's lateral and vertical distances from it.
@@ -937,7 +955,7 @@ public static Vector2 RelativePositionNm(Vector2 position, Vector2 relativeTo)
 \end{lstlisting}
 
 \subsubsection{Scaling}
-Because the size of the game window will change based on the resolution of the user's monitor and if they resize it, the scale factor has to continually change if a fixed real-world distance is to be displayed, which is necessary for my solution.
+Because the size of the game window will change based on the resolution of the user's monitor and if they resize it, the scale factor has to continually change if a fixed real-world distance is to be displayed.
 It may also be useful to be able to fix the distance by either height or width.
 Calculating the scale factor given a desired real-world distance to display is a simple matter of dividing the screen size by that distance.
 \lstset{style=csharp}
@@ -972,18 +990,6 @@ public override void _Process(double delta)
 
 
 \subsection{Aeroplane physical simulation}
-The heading of an aeroplane describes the direction it is pointing in, which is not necessarily the same as the direction it is travelling in.
-In stable flight the main contributor to this discrepancy is wind, see figure \ref{fig:windtriangle}.
-
-\lstset{style=csharp}
-\begin{lstlisting}[caption=Wrapping true heading value]
-[Export] public float TrueHeading
-{
-    get => _heading;
-    set => _heading = Mathf.Wrap(value, 0, 360);
-}
-\end{lstlisting}
-
 To calculate a \gls{vector} representing the movement of an aeroplane over the ground the heading \gls{vector} and wind \gls{vector} are added, where the \gls{heading} \gls{vector} is the aeroplane's \gls{directionvector} multiplied by its \gls{airspeed} and the wind \gls{vector} is the wind \gls{directionvector} multiplied by the wind speed.
 \lstset{style=csharp}
 \begin{lstlisting}[caption=Extract of the aeroplane physics process]
@@ -1027,7 +1033,7 @@ private Vector2 HeadingToVector(float heading)
 \subsection{Aeroplane navigation simulation}
 \subsubsection{Glideslope}
 Because it would be difficult to add the debugging features necessary to the main project, I chose to create a python program which would run a simplified simulation and allow me to more quickly iterate on the glideslope vertical mode parameters and see the result.
-I initially chose to use a PID controller\cite{pidcontroller} because it is probably similar to what is done in real life, however it was difficult to get it to perform accurately.
+My initial design was to use a PID controller\cite{pidcontroller} because it is probably similar to what is done in real life, however it was difficult to get it to perform accurately.
 Therefore I chose to use a simpler solution which would, based on the time necessary to pitch down to match the glideslope's angle, calculate the point at which to command pitch down in order to align with the glideslope's path.
 
 TODO: Add evidence
@@ -1041,26 +1047,30 @@ TODO: explain aeroplane display system
 \caption{\label{fig:aeroplane}A screenshot of the game showing the aeroplane display}
 \end{figure}
 
+\clearpage
 \section{Evaluation}
-TODO
+\subsection{Function and robustness testing}
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{screenshots/schiphol2.png}
 \caption{\label{fig:schiphol}A screenshot of the simulation showing Schiphol airport}
 \end{figure}
-
-
-\subsection{Function and robustness testing}
-TODO
+Figure \ref{fig:schiphol} shows multiple features of the solution being tested and functioning correctly with a full set of real world data.
+You can see the waypoints, coastline, extended centreline, and the aeroplanes all displaying correctly.
 
 
 \subsection{Usability testing}
-TODO
+I gave it to my stakeholder Freddy.
 
 
-\subsection{Conclusion}
-TODO
+\subsection{Improvements to address unmet success criteria}
 
+
+\subsection{Maintenance and limitations}
+The way I have developed my solution has resulted in a very maintainable system.
+This is mainly because the components of the solution are largely decoupled from one another, because having to make changes in many areas to implement one feature is the biggest contributor to low maintainability.
+Many features are separated out into separate scripts which are in a well organized directory structure.
+Variables and classes have all been named well and comments used to annotate the purpose of sections of code.
 
 \clearpage
 
