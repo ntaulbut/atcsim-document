@@ -863,143 +863,129 @@ It works using a system of nodes, which I can use to hold each module of my solu
 \subsection{Data}
 Many problems of the solution shown require data to be stored.
 This includes waypoints, geography, airports, and more.
-The Godot game engine provides a feature called \textit{resources}, which are data containers that allow you to define the names and data types of fields that the resource should store; then the engine manages writing this to the disk in an appropriate place as a text file.
-This is very convenient because it abstracts away the details of handling files on different operating systems and allows an object-oriented style approach to data storage where fields can contain references to other resource types, for example a RadarConfig resource will contain an array of references to Waypoint resources.
-It also provides data types such as vectors.
-% \begin{center}
-% \begin{tabular}{ | p{5em} | p{20em} | } 
-%     \hline
-%     Waypoint &
-%     \begin{itemize}
-%         \item Vector2 LatitudeLongitude
-%         \item string Name
-%     \end{itemize}
-%     \\ 
-%     \hline
-%     Airport & TODO \\ 
-%     \hline
-% \end{tabular}
-% \end{center}
+The Godot game engine provides a feature called \textit{resources}, which are data containers that allow you to define the names and data types of fields that the resource should store; then the engine manages writing this to the disk in an appropriate place in text.
 
+To configure the simulator for controlling at a particular airport, I created a 'Radar Config' object, as a Godot resource.
+When a user selects an airport to control at, they will be selecting a radar config.
+This current radar config will be stored in a singleton class accessible by all elements of the solution.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=RadarConfig resource]
+using Godot;
+using System;
+
+public partial class RadarConfig : Resource
+{
+    public enum Display {Width, Height}
+    [Export] public RadarStyle Style;
+    [Export] public int WidthNm = 60;
+    [Export] public int HeightNm = 60;
+    [Export] public Display FixedBy;
+    [Export] public Vector2 LatLon;
+}
+\end{lstlisting}
 
 \subsection{Representing space}
-Several features of my solution need to work with real-world points, such as \glspl{waypoint}, defined by latitudes and longitudes.
-To make these easier to work with, I decided to convert their positions from latitudes and longitudes into Cartesian coordinates, with the screen centre as (0, 0).
-To do this, I would need to assign the centre of the screen a latitude and longitude, and then calculate the point's lateral and vertical distances from it.
-If I wanted to display the point on the screen, I would then need to scale the real-world distances to pixels.
-
-To enable this I created a class, 'Geo', to provide re-usable geographical functions.
-For example whilst the function shown in listing \ref{lst:getdistancenm} was initially created to enable displaying waypoints on the screen, it can also be used to for example display geographical features.
-
-\subsubsection{Calculating distance along the Earth}
-I chose to use the spherical law of cosines formula to calculate distance, since with modern floating point numbers, it does not have significant rounding errors for the distances seen in my solution.
-It states that where $\phi _{1}, \lambda _{1}$ and $\phi _{2}, \lambda _{2}$ are the latitudes and longitudes of two points, and ${\Delta \phi, \Delta \lambda}$ are their absolute differences, the central angle between them is given by:
-\[ \Delta \sigma =\arccos {\bigl (}\sin \phi _{1}\sin \phi _{2}+\cos \phi _{1}\cos \phi _{2}\cos(\Delta \lambda ){\bigr )} \] 
-Because the inputs are given in radians, the result is in radians.
-The simple sector length formula $L=r\theta$ can then be used to find the distance, where $r$ is the radius of the Earth\cite{greatcircledistance}.
+As described in the design section, positions will be expressed in distances in nautical miles from a reference latitude and longitude.
+The lateral and vertical distances can be calculated by using an imaginary point with the latitude of the reference point and the longitude of the point.
+Because the distance will always be positive, the \gls{quadrant} the point lies in relative to the reference point must be determined and the sign flipped accordingly.
+In a script called Geo, I created this function to do this, where Listing \ref{lst:getdistancenm} is the implementation of GetDistanceNm:
 \lstset{style=csharp}
-\begin{lstlisting}[label={lst:getdistancenm},caption=Calculating great-circle distance using the spherical law of cosines]
+\begin{lstlisting}[caption=Calculating the position of a point relative to another]
+public static Vector2 RelativePositionNm(Vector2 position, Vector2 relativeTo)
+{
+    // Get the position in nautical miles of a point relative to another
+
+    float horizontalComponent = GetDistanceNm(relativeTo.X, relativeTo.Y, relativeTo.X, position.Y);
+    // Make sign negative if longitude is less than the relative to point
+    horizontalComponent = position.Y < relativeTo.Y ? -horizontalComponent : horizontalComponent;
+
+    float verticalComponent = GetDistanceNm(relativeTo.X, position.Y, position.X, position.Y);
+    // Make sign negative if latitude is less than the relative to point
+    verticalComponent = position.X < relativeTo.X ? -verticalComponent : verticalComponent;
+
+    return new Vector2(horizontalComponent, verticalComponent);
+}
+\end{lstlisting}
+\lstset{style=csharp}
+\begin{lstlisting}[label={lst:getdistancenm},caption=Function to calculate great-circle distance using the spherical law of cosines]
 // Average radius of the Earth in nautical miles
 private const float EarthRadiusNm = 3438.175f;
 
 public static float GetDistanceNm(float latitude, float longitude, float otherLatitude, float otherLongitude)
 {
+    // Get distance in nautical miles between two points
+
     float centralAngle = Mathf.Acos(Mathf.Sin(latitude) * Mathf.Sin(otherLatitude) + Mathf.Cos(latitude) * Mathf.Cos(otherLatitude) * Mathf.Cos(Mathf.Abs(longitude - otherLongitude)));
     return EarthRadiusNm * Mathf.DegToRad(centralAngle);
-}
-\end{lstlisting}
-
-% Insert more detail about testing here
-After testing, I found that this broke somehow.
-So I used the haversine formula instead:
-TODO: add evidence and elaborate
-\[ \operatorname{hav}(\theta ) = \operatorname{hav} (\Delta \phi) + \cos(\varphi _{1})\cos (\varphi _{2})\operatorname{hav}(\Delta \lambda) \] 
-\[ d = r \operatorname{archav} (h) \]
-
-\begin{lstlisting}[label={lst:getdistancenmhaversine},caption=Calculating great-circle distance using the haversine formula]
-// Convert to radians
-float lat = Mathf.DegToRad(latitude);
-float lon = Mathf.DegToRad(longitude);
-float otherLat = Mathf.DegToRad(otherLatitude);
-float otherLon = Mathf.DegToRad(otherLongitude);
-// Use the haversine formula
-float haversineTheta = Haversine(otherLat - lat) + Mathf.Cos(lat) * Mathf.Cos(otherLat) * Haversine(otherLon - lon);
-return EarthRadiusNm * Archaversine(haversineTheta);
-\end{lstlisting}
-
-\begin{lstlisting}[label={lst:haversine},caption=The haversine functions]
-public static float Haversine(float x)
-{
-  return Mathf.Pow(Mathf.Sin(x / 2f), 2);
-}
-
-public static float Archaversine(float x)
-{
-  return 2f * Mathf.Asin(Mathf.Sqrt(x));
-}
-\end{lstlisting}
-
-\subsubsection{Calculating position as a Cartesian coordinate}
-By using an imaginary point with the latitude of the screen centre and the longitude of the point, I can individually calculate the horizontal and vertical distances.
-Because the distance will always be positive, I have to calculate the \gls{quadrant} the point lies in relative to the screen centre and flip the sign accordingly for it to be a coordinate.
-\lstset{style=csharp}
-\begin{lstlisting}[caption=Calculating the position of a point relative to another]
-public static Vector2 RelativePositionNm(Vector2 position, Vector2 relativeTo)
-{
-    float horizontalComponent = GetDistanceNm(relativeTo.x, relativeTo.y, relativeTo.x, position.y);
-    horizontalComponent = position.y < relativeTo.y ? -horizontalComponent : horizontalComponent;
-    float verticalComponent = GetDistanceNm(relativeTo.x, position.y, position.x, position.y);
-    verticalComponent = position.x < relativeTo.x ? -verticalComponent : verticalComponent;
-    return new Vector2(horizontalComponent, verticalComponent);
 }
 \end{lstlisting}
 
 \subsubsection{Scaling}
 Because the size of the game window will change based on the resolution of the user's monitor and if they resize it, the scale factor has to continually change if a fixed real-world distance is to be displayed.
 It may also be useful to be able to fix the distance by either height or width.
-Calculating the scale factor given a desired real-world distance to display is a simple matter of dividing the screen size by that distance.
+I created this function to do so, on a singleton class called Session that can be accessed by all other elements of the solution:
 \lstset{style=csharp}
-\begin{lstlisting}[caption=Calculating the scale]
-public static new float Scale(Rect2 viewportRect)
+\begin{lstlisting}[caption=Function to calculate the scale]
+public static float Scale(Rect2 viewportRect)
 {
-    _viewportRect = viewportRect;
-    float zoomValue = Mathf.Pow(1 + ZoomSpeed, Zoom);
     return RadarConfig.FixedBy switch
     {
-        RadarConfig.DisplayFixedBy.Width => (viewportRect.Size.x / RadarConfig.WidthNm) * zoomValue,
-        RadarConfig.DisplayFixedBy.Height => (viewportRect.Size.y / RadarConfig.HeightNm) * zoomValue,
-        RadarConfig.DisplayFixedBy.Compromise => (viewportRect.Size.x / RadarConfig.WidthNm + viewportRect.Size.y / RadarConfig.HeightNm) / 2 * zoomValue,
+        RadarConfig.Display.Width => viewportRect.Size.x / RadarConfig.WidthNm,
+        RadarConfig.Display.Height => viewportRect.Size.y / RadarConfig.HeightNm,
         _ => throw new NotImplementedException()
     };
 }
 \end{lstlisting}
-The position in nautical miles of a point can then simply be multiplied by this value to get its final screen position.
-\begin{lstlisting}[caption=Notifying other modules of a change in scale]
-[Signal] public delegate void ScaleChangedEventHandler();
-
-public override void _Process(double delta)
+The position in nautical miles can then be multiplied by this value to get the position in pixels.
+Here I also make the longitude or vertical component negative because in Godot, increasing values on the y-axis go down the screen.
+\begin{lstlisting}[caption=Function to scale a position in nautical miles to the screen]
+public static Vector2 ScaledPosition(Vector2 position, Rect2 viewportRect)
 {
-    float scale = Scale(_viewportRect);
-    if (scale != _previousScale)
-    {
-        EmitSignal(nameof(ScaleChanged));
-    }
-    _previousScale = scale;
+    return new Vector2(position.x, -position.y) * Scale(viewportRect);
 }
 \end{lstlisting}
 
 
-\subsection{Aeroplane physical simulation}
-To calculate a \gls{vector} representing the movement of an aeroplane over the ground the heading \gls{vector} and wind \gls{vector} are added, where the \gls{heading} \gls{vector} is the aeroplane's \gls{directionvector} multiplied by its \gls{airspeed} and the wind \gls{vector} is the wind \gls{directionvector} multiplied by the wind speed.
+\subsection{Simulated aeroplanes}
+Godot has a feature called scenes which allows a tree of nodes to be stored which can be instantiated later.
+Each node can have a script attached to it.
+In my solution, each aeroplane will be an instance of an aeroplane scene with the primary script controlling it being on the root node.
+
+\subsubsection{Physics simulation}
+Listing \ref{lst:aeroplanescript} shows the main script I created to run on the root node of the aeroplane scene.
+It shows the attributes and the validation on the heading.
+Scripts on Godot nodes inherit from a parent Node class, and can then override built-in methods such as PhysicsProcess which is called every physics step.
+This is part of the 'game loop'.
 \lstset{style=csharp}
-\begin{lstlisting}[caption=Extract of the aeroplane physics process]
-Vector2 airVector = HeadingToVector(TrueHeading) * TrueAirspeed;
-Vector2 windVector = HeadingToVector(_simulator.WindDirection) * _simulator.WindSpeed;
-Velocity = (airVector + windVector) / SecondsInAnHour * (float)delta;
-PositionNm += Velocity;
+\begin{lstlisting}[label={lst:aeroplanescript}, caption=The aeroplane script]
+public partial class Aeroplane : Node
+{
+    public const int SecondsInAnHour = 3600;
+
+    [Export] public float Altitude;
+    [Export] public float TrueAirspeed;
+    private float _heading;
+    [Export] public float TrueHeading
+    {
+        get => _heading;
+        set => _heading = Mathf.Wrap(value, 0, 360);
+    }
+
+    [Export] public Vector2 PositionNm;
+    [Export] public Vector2 Velocity;
+
+    public override void _PhysicsProcess(double delta)
+    {
+        Vector2 airVector = HeadingToVector(TrueHeading) * TrueAirspeed;
+        Vector2 windVector = HeadingToVector(Session.WindDirection) * Session.WindSpeed;
+        // Add vectors and convert from nautical miles/hour to /second
+        // then multiply by elapsed number of seconds this iteration
+        Velocity = (airVector + windVector) / SecondsInAnHour * (float)delta;
+        PositionNm += Velocity;
+    }
+}
 \end{lstlisting}
 
-\subsubsection{Converting a heading to a direction vector}
 To convert a \gls{heading} to a \gls{directionvector} it is necessary to determine which \gls{quadrant} the \gls{heading} lies in.
 The angle the \gls{heading} makes with the $y$ axis can then be calculated.
 Then the sine rule can be used to calculate the positive $x$ and $y$ components of a \gls{unitvector} with that angle.
@@ -1029,9 +1015,10 @@ private Vector2 HeadingToVector(float heading)
 }
 \end{lstlisting}
 
+TODO: testing, leader line
 
-\subsection{Aeroplane navigation simulation}
-\subsubsection{Glideslope}
+\subsubsection{Navigation simulation}
+\paragraph{Glideslope}
 Because it would be difficult to add the debugging features necessary to the main project, I chose to create a python program which would run a simplified simulation and allow me to more quickly iterate on the glideslope vertical mode parameters and see the result.
 My initial design was to use a PID controller\cite{pidcontroller} because it is probably similar to what is done in real life, however it was difficult to get it to perform accurately.
 Therefore I chose to use a simpler solution which would, based on the time necessary to pitch down to match the glideslope's angle, calculate the point at which to command pitch down in order to align with the glideslope's path.
@@ -1069,7 +1056,7 @@ I gave it to my stakeholder Freddy.
 \subsection{Maintenance and limitations}
 The way I have developed my solution has resulted in a very maintainable system.
 This is mainly because the components of the solution are largely decoupled from one another, because having to make changes in many areas to implement one feature is the biggest contributor to low maintainability.
-Many features are separated out into separate scripts which are in a well organized directory structure.
+Most features are separated out into separate scripts which are in a well organized directory structure.
 Variables and classes have all been named well and comments used to annotate the purpose of sections of code.
 
 \clearpage

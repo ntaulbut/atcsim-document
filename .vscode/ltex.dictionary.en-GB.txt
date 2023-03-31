@@ -39,3 +39,4 @@ AeroplaneDisplay
 
 GeoJSON
 LineStrings
+GetDistanceNm
