@@ -16,6 +16,8 @@
 \usepackage{array}
 \usepackage{float}
 \usepackage{csquotes}
+\usepackage{xstring}
+\usepackage{catchfile}
 \usepackage{datetime}
 \usepackage{amsmath}
 \usepackage{rotating}
@@ -31,13 +33,35 @@
 % Bibliography
 \usepackage[backend=biber, style=numeric, sorting=none]{biblatex}
 \addbibresource{bibliography.bib}
+% Git commands
+\CatchFileDef{\headfull}{.git/HEAD}{}
+\StrGobbleRight{\headfull}{1}[\head]
+\StrBehind[2]{\head}{/}[\branch]
+\IfFileExists{.git/refs/heads/\branch.}{%
+    \CatchFileDef{\commit}{.git/refs/heads/\branch.}{}}{%
+    \newcommand{\commit}{\dots~(in \emph{packed-refs})}}
 
 % Figures are in figures/
 \graphicspath{ {figures} }
 
+% LTeX: enabled=false
+%%
+%% Julia definition (c) 2014 Jubobs
+%%
+\lstdefinelanguage{Julia}%
+  {morekeywords={abstract,break,case,catch,const,continue,do,else,elseif,%
+      end,export,false,for,function,immutable,import,importall,if,in,%
+      macro,module,otherwise,quote,return,switch,true,try,type,typealias,%
+      using,while},%
+   sensitive=true,%
+   alsoother={\$},%
+   morecomment=[l]\#,%
+   morecomment=[n]{\#=}{=\#},%
+   morestring=[s]{"}{"},%
+   morestring=[m]{'}{'},%
+}[keywords,comments,strings]%
 % Code style
 \definecolor{backcolour}{rgb}{0.97,0.97,0.97}
-% LTeX: enabled=false
 \lstdefinestyle{csharp}{
     language=[Sharp]C,
     backgroundcolor=\color{backcolour},   
@@ -137,7 +161,7 @@
 
 \vfill
 \begin{center}
-Typeset in \textrm{\LaTeX{}}
+Prepared in \textrm{\LaTeX{}} --- This revision: \texttt{\StrLeft{\commit}{7}}
 \end{center}
 
 \clearpage
@@ -475,7 +499,8 @@ The values in nautical miles can then simply be multiplied by this factor.
 The initial scale can be calculated from a desired width in nautical miles specific to each airport configuration.
 From there the user should be able to zoom in or out using the scroll wheel of their mouse.
 Each time the user zooms in or out an increment, the scale value will be multiplied by e.g. 1.1 or 0.9 respectively.
-Panning the simulated radar screen will be accomplished by recording the position of the user's mouse on the screen when they first press the right mouse button down, and then moving a virtual camera in the inverse direction to the motion of the mouse relative to that point. This will be very usable for the user, because it is similar to other solutions.
+Panning the simulated radar screen will be accomplished by recording the position of the user's mouse on the screen when they first press the right mouse button down, and then moving a virtual camera in the inverse direction to the motion of the mouse relative to that point.
+This will be very usable for the user, because it is similar to other solutions.
 
 \subsection{Simulated aeroplanes}
 In order to maintain physical consistency (e.g. if an aeroplane is already in a turn to the right, it will take longer to start turning to the left than if it was not turning), the navigation system will be isolated from the physical simulation and will interact with it by commanding a yaw rate in degrees per second and a \gls{flightpathangle} in degrees.
@@ -722,7 +747,8 @@ override LateralMode? NewMode() \\
 \end{figure}
 
 \paragraph{Testing}
-All of these subsystems will have to be tested as they are developed. The following data should be used during the iterative development:
+All of these subsystems will have to be tested as they are developed.
+The following data should be used during the iterative development:
 \begin{itemize}
     \item The altitude change modes should be tested by giving instructions with varying differences in height from the aeroplane's current height, for example giving an instruction to climb to the altitude the aeroplane is already at or close to, or very far from, to ensure it acts correctly.
     \item The glideslope simulation should be tested with a variety of different glideslope angles, from 3 to 5 degrees, to confirm it can handle all of them.
@@ -925,7 +951,7 @@ Because the size of the game window will change based on the resolution of the u
 It may also be useful to be able to fix the distance by either height or width.
 I created this function to do so, on a singleton class called Session that can be accessed by all other elements of the solution:
 \lstset{style=csharp}
-\begin{lstlisting}[caption=Function to calculate the scale]
+\begin{lstlisting}[label={lst:scalecalc},caption=Function to calculate the scale]
 public static float Scale(Rect2 viewportRect)
 {
     return RadarConfig.FixedBy switch
@@ -945,13 +971,313 @@ public static Vector2 ScaledPosition(Vector2 position, Rect2 viewportRect)
 }
 \end{lstlisting}
 
+\subsubsection{Pan and zoom}
+To implement panning, I added a script to the virtual camera in the scene.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Camera panning script]
+public partial class CameraPanning : Camera2D
+{
+    private Vector2 _initialCameraPosition;
+    private Vector2 _initialMousePosition;
+
+    public override void _Process(double delta)
+    {
+        if (Input.IsActionJustPressed("Reset Camera"))
+        {
+            Position = Vector2.Zero;
+            _initialCameraPosition = Vector2.Zero;
+            _initialMousePosition = GetViewport().GetMousePosition();
+        }
+
+        // Set reference points for movement
+        if (Input.IsActionJustPressed("Pan Camera"))
+        {
+            _initialMousePosition = GetViewport().GetMousePosition();
+            _initialCameraPosition = Position;
+        }
+
+        // Move the camera in the opposite direction to mouse movement, from the reference point
+        if (Input.IsActionPressed("Pan Camera"))
+        {
+            Vector2 mouseDelta = GetViewport().GetMousePosition() - _initialMousePosition;
+            Vector2 inverse = new Vector2(-mouseDelta.x, -mouseDelta.y);
+            Position = _initialCameraPosition + inverse;
+        }
+    }
+}
+\end{lstlisting}
+To implement zooming, I initially added the input handling to the singleton class accessible by all elements of the solution (Listing \ref{lst:zoominginput}) and modified the scale calculation function (first shown in Listing \ref{lst:scalecalc}) to include the zoom value (Listing \ref{lst:zoomscalecalc}).
+I later moved the input handling to the script on the camera (which I renamed to CameraPanAndZoom) to keep the two related features in the same place.
+\lstset{style=csharp}
+\begin{lstlisting}[label={lst:zoominginput},caption=Camera zooming]
+public override void _Input(InputEvent inputEvent)
+{
+    if (inputEvent.IsActionPressed("Zoom In"))
+    {
+        _zoom *= (1f + ZoomSpeed);
+    }
+    else if (inputEvent.IsActionPressed("Zoom Out"))
+    {
+        _zoom *= (1f - ZoomSpeed);
+    }
+    else if (inputEvent.IsActionPressed("Reset Camera"))
+    {
+        _zoom = 1f;
+    }
+    _zoom = Mathf.Clamp(_zoom, 0.1f, 10f);
+}
+\end{lstlisting}
+\lstset{style=csharp}
+\begin{lstlisting}[label={lst:zoomscalecalc},caption=Scale calculation with zoom]
+return RadarConfig.FixedBy switch
+{
+    RadarConfig.DisplayFixedBy.Width => (viewportRect.Size.x / RadarConfig.WidthNm) * _zoom,
+    RadarConfig.DisplayFixedBy.Height => (viewportRect.Size.y / RadarConfig.HeightNm) * _zoom,
+    RadarConfig.DisplayFixedBy.Compromise => (viewportRect.Size.x / RadarConfig.WidthNm + viewportRect.Size.y / RadarConfig.HeightNm) / 2 * _zoom,
+    _ => throw new NotImplementedException()
+};
+\end{lstlisting}
+Upon testing, I found that when zooming in and out the camera appeared to move laterally: it did not zoom in towards the centre of the screen.
+To fix this I realized I had to scale up or down the position of the camera as the user zoomed in or out.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Modified zoom function to scale position]
+public override void _Input(InputEvent inputEvent)
+{
+    if (inputEvent.IsActionPressed("Zoom In"))
+    {
+        Simulator.Zoom *= (1f + Simulator.ZoomSpeed);
+        Position *= (1f + Simulator.ZoomSpeed);
+        SetReference();
+    }
+    else if (inputEvent.IsActionPressed("Zoom Out"))
+    {
+        Simulator.Zoom *= (1f - Simulator.ZoomSpeed);
+        Position *= (1f - Simulator.ZoomSpeed);
+        SetReference();
+    }
+    else if (inputEvent.IsActionPressed("Reset Camera"))
+    {
+        Simulator.Zoom = 1f;
+    }
+}
+\end{lstlisting}
+I also discovered that as I zoomed in the speed of the zooming increased, and as I zoomed out it decreased.
+To fix this and meet the success criteria, I changed how the zoom is calculated, simultaneously making it be in fixed steps so that when getting to the minimum or maximum values, no inconsistency is caused by rounding.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Zooming in increments]
+public override void _Input(InputEvent @inputEvent)
+{
+    if (@inputEvent.IsActionPressed("Zoom In"))
+    {
+        if (Simulator.Zoom < MaxZoom)
+        {
+            Simulator.Zoom++;
+            // Move the camera to compensate for stretching of distances
+            Position *= 1f + Simulator.ZoomSpeed;
+            SetReference();
+        }
+    }
+    else if (@inputEvent.IsActionPressed("Zoom Out"))
+    {
+        if (Simulator.Zoom > MinZoom)
+        {
+            Simulator.Zoom--;
+            // Move the camera to compensate for stretching of distances
+            Position /= 1f + Simulator.ZoomSpeed;
+            SetReference();
+        }
+    }
+    else if (@inputEvent.IsActionPressed("Reset Camera"))
+    {
+        Simulator.Zoom = 0;
+    }
+}
+\end{lstlisting}
+\lstset{style=csharp}
+\begin{lstlisting}[caption=New calculation of zoom value in scale function]
+// Calculate zoom value from increment
+float zoomValue = Mathf.Pow(1 + ZoomSpeed, Zoom);
+return RadarConfig.FixedBy switch
+{
+    RadarConfig.DisplayFixedBy.Width => (viewportRect.Size.X / RadarConfig.WidthNm) * zoomValue,
+    RadarConfig.DisplayFixedBy.Height => (viewportRect.Size.Y / RadarConfig.HeightNm) * zoomValue,
+    RadarConfig.DisplayFixedBy.Compromise => (viewportRect.Size.X / RadarConfig.WidthNm + viewportRect.Size.Y / RadarConfig.HeightNm) / 2 * zoomValue,
+    _ => throw new NotImplementedException()
+};
+\end{lstlisting}
+Testing the feature again after making these changes revealed the problems had been resolved.
+
+\subsection{Terrain drawing}
+To implement this feature, I added a 2D node in the gameplay scene in Godot and added the script below.
+OnScaleChanged is called every time the scale changes, which necessitates re-drawing.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Geography drawing script]
+public partial class DrawGeography : Node2D
+{
+	private readonly List<List<Vector2>> _polyLines = new();
+
+	public override void _Ready()
+	{
+		// Read GeoJSON polylines
+		var polyLines = Json.ParseString(Simulator.RadarConfig.GeoLines.data).AsGodotArray();
+		foreach (var polyLine in polyLines)
+		{
+			// Get the relative position of each point in the polyline
+			List<Vector2> points = new();
+			foreach (float[] point in polyLine.AsGodotArray())
+			{
+				Vector2 PointNm = Geo.RelativePositionNm(new Vector2(point[1], point[0]), Simulator.RadarConfig.LatLon);
+				points.Add(PointNm);
+			}
+			_polyLines.Add(points);
+		}
+	}
+
+	public override void _Draw()
+	{
+		GD.Print("Drawing terrain");
+		foreach(List<Vector2> polyLine in _polyLines)
+		{
+			// Scale the points in the line
+			Vector2[] scaledPolyline = polyLine.Select(PointNm => Simulator.ScaledPosition(PointNm, GetViewportRect())).ToArray();
+			DrawPolyline(scaledPolyline, Simulator.RadarConfig.Style.CoastlineColour);
+		}
+	}
+
+	public void OnScaleChanged()
+	{
+		QueueRedraw();
+	}
+}
+\end{lstlisting}
+Upon testing this, I noticed that beyond a certain distance the terrain started to show up incorrectly, seeming to begin to be mirrored laterally.
+I could not find anything wrong with the terrain drawing code itself, rather it turned out that the problem was with the distance calculation (which had previously appeared to work perfectly with the other elements of the solution): the latitudes and longitudes had to be converted from degrees to radians.
+I therefore modified this function as below.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Modified distance function]
+public static float GetDistanceNm(float latitude, float longitude, float otherLatitude, float otherLongitude)
+{
+    // Convert to radians
+    float lat = Mathf.DegToRad(latitude);
+    float lon = Mathf.DegToRad(longitude);
+    float otherLat = Mathf.DegToRad(otherLatitude);
+    float otherLon = Mathf.DegToRad(otherLongitude);
+    
+    float centralAngle = Mathf.Acos(Mathf.Sin(latitude) * Mathf.Sin(otherLatitude) + Mathf.Cos(latitude) * Mathf.Cos(otherLatitude) * Mathf.Cos(Mathf.Abs(longitude - otherLongitude)));
+    return EarthRadiusNm * Mathf.DegToRad(centralAngle);
+}
+\end{lstlisting}
+Upon further testing, this appeared to resolve the problem.
+However, when testing with a different set of coastline data from another part of the world, a bizarre problem appeared: it looked like the points of the lines drawn were rounded onto a grid.
+I could not determine exactly why this was, but using a different formula for the distance calculation resolved this.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Final distance function with the Haversine formula]
+public static float GetDistanceNm(float latitude, float longitude, float otherLatitude, float otherLongitude)
+{
+    // Convert to radians
+    float lat = Mathf.DegToRad(latitude);
+    float lon = Mathf.DegToRad(longitude);
+    float otherLat = Mathf.DegToRad(otherLatitude);
+    float otherLon = Mathf.DegToRad(otherLongitude);
+    // Use the haversine formula
+    float haversineTheta = Haversine(otherLat - lat) + Mathf.Cos(lat) * Mathf.Cos(otherLat) * Haversine(otherLon - lon);
+    return EarthRadiusNm * Archaversine(haversineTheta);
+}
+\end{lstlisting}
+
+\subsection{Waypoints}
+To implement this feature I first created a Godot resource to store the information about waypoints.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Waypoint data resource]
+public partial class WaypointData : Resource
+{
+    public enum Type {RNAV, VORDME, VOR, NDB}
+    [Export] public Type Basis;
+    [Export] public Vector2 LatLon;
+}
+\end{lstlisting}
+I then created a waypoint scene with a 2D sprite root node and a label node attached.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{screenshots/wptree.png}
+\caption{\label{fig:wpscenetree}Waypoint scene tree}
+\end{figure}
+I attached the below script to the root node of the waypoint scene.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Waypoint script]
+public partial class Waypoint : Sprite2D
+{
+    public WaypointData WaypointData;
+    public Vector2 PositionNm;
+
+    public override void _Ready()
+    {
+        // Set icon coressponding to waypoint type
+        Texture = WaypointData.Basis switch
+        {
+            WaypointData.Type.RNAV => Simulator.RadarConfig.Style.RNAVTexture,
+            WaypointData.Type.VOR => Simulator.RadarConfig.Style.VORTexture,
+            WaypointData.Type.VORDME => Simulator.RadarConfig.Style.VORDMETexture,
+            WaypointData.Type.NDB => Simulator.RadarConfig.Style.NDBTexture,
+            _ => throw new NotImplementedException()
+        };
+
+        // Set name
+        GetChild<Label>(0).Text = WaypointData.ResourceName;
+
+        // Calculate position relative to screen centre
+        PositionNm = Geo.RelativePositionNm(WaypointData.LatLon, Simulator.RadarConfig.LatLon);
+    }
+
+    public override void _Draw()
+    {
+        Position = Simulator.ScaledPosition(PositionNm, GetViewportRect());
+    }
+
+    public void OnScaleChanged()
+    {
+        QueueRedraw();
+    }
+}
+\end{lstlisting}
+I then created an empty node in the gameplay scene with the script below attached, to serve the purpose of adding all the waypoints from the configuration, instantiating the waypoint scene for each and adding them as children (see Figure \ref{fig:wpscenetree2}).
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Waypoints management script]
+public partial class Waypoints : Node
+{
+    [Export] public Resource WaypointScene;
+
+    public override void _Ready()
+    {
+        PackedScene waypointScene = GD.Load<PackedScene>(WaypointScene.ResourcePath);
+        Simulator.Waypoints.Clear();
+        // Add all the waypoints for the radar config to the scene
+        foreach (WaypointData waypointData in Simulator.RadarConfig.Waypoints)
+        {
+            Node node = waypointScene.Instantiate();
+            Waypoint waypoint = (Waypoint)node;
+            waypoint.WaypointData = waypointData;
+            node.Name = waypointData.ResourceName;
+            AddChild(node);
+            // Register waypoint
+            Simulator.Waypoints.Add(waypointData.ResourceName, waypoint);
+        }
+    }
+}
+\end{lstlisting}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{screenshots/wptree2.png}
+\caption{\label{fig:wpscenetree2}Waypoints scene tree in the gameplay scene}
+\end{figure}
+To test this I compared the result with maps of the waypoints and they all appeared in the correct places, and stayed in the correct places when zooming in and out.
 
 \subsection{Simulated aeroplanes}
 Godot has a feature called scenes which allows a tree of nodes to be stored which can be instantiated later.
 Each node can have a script attached to it.
 In my solution, each aeroplane will be an instance of an aeroplane scene with the primary script controlling it being on the root node.
 
-\subsubsection{Physics simulation}
+\subsubsection{Physics simulation}\label{physicssimulation}
 Listing \ref{lst:aeroplanescript} shows the main script I created to run on the root node of the aeroplane scene.
 It shows the attributes and the validation on the heading.
 Scripts on Godot nodes inherit from a parent Node class, and can then override built-in methods such as PhysicsProcess which is called every physics step.
@@ -1014,43 +1340,773 @@ private Vector2 HeadingToVector(float heading)
   return new Vector2(Mathf.Sin(Mathf.DegToRad(theta)), Mathf.Sin(Mathf.DegToRad(90 - theta))) * quadrant;
 }
 \end{lstlisting}
+To test the physics simulation and its wind drift simulation, I needed to be able to see a clear indication of the aeroplane's movement, so I chose to add the leader line at this point (development of this is described in section \ref{leaderline}).
 
-TODO: testing, leader line
-
-\subsubsection{Navigation simulation}
-\paragraph{Glideslope}
-Because it would be difficult to add the debugging features necessary to the main project, I chose to create a python program which would run a simplified simulation and allow me to more quickly iterate on the glideslope vertical mode parameters and see the result.
-My initial design was to use a PID controller\cite{pidcontroller} because it is probably similar to what is done in real life, however it was difficult to get it to perform accurately.
-Therefore I chose to use a simpler solution which would, based on the time necessary to pitch down to match the glideslope's angle, calculate the point at which to command pitch down in order to align with the glideslope's path.
-
-TODO: Add evidence
-
-
-\subsection{Aeroplane display}
-TODO: explain aeroplane display system
+\paragraph{Testing}
+Without a system for controlling the addition of more aeroplanes I initially just used one instance of the aeroplane class which I could easily control.
+To enable the testing of the physics simulation without an implemented system for instructions or getting live weather information, I created a temporary menu interface with three sliders: one for wind speed, wind direction, and aeroplane heading, shown in Figure \ref{fig:winddebug}.
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.75\textwidth]{screenshots/aeroplane.png}
-\caption{\label{fig:aeroplane}A screenshot of the game showing the aeroplane display}
+\includegraphics{screenshots/winddebug.png}
+\caption{\label{fig:winddebug}Wind and heading debug menu}
 \end{figure}
+Using this tool, I set different parameters as defined in the design section and observed that the leader line indicated an accurate looking affect on the direction of travel.
+
+\subsubsection{Navigation simulation}
+To begin implementing this feature, I created a Guidance script in the same folder as the Aeroplane script.
+I first implemented the lateral guidance modes, adding the below base classes and a variable on the Aeroplane class with the type LateralMode as per the design.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Guidance base classes]
+public class Mode
+{
+    protected Aeroplane _aeroplane;
+}
+
+public class LateralMode : Mode
+{
+    public virtual float RollCommand()
+    {
+        return 0f;
+    }
+}
+\end{lstlisting}
+Because it is not possible to easily test the guidance features without being able to give the instructions they correspond to, I developed the interfaces for each first (section \ref{thetag}).
+
+\paragraph{Heading select}
+At the same time as adding the heading field to the tag, I added a receiver function for the instructions on the Aeroplane class.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Heading instruction receiver function]
+private void OnHeadingInstruction(float heading, int turnDirection)
+{
+    _lateralGuidanceMode = new Guidance.HeadingSelect(this, heading, (Guidance.TurnDirection)turnDirection);
+}
+\end{lstlisting}
+I chose to implement the heading select mode first because it is one of the most fundamental.
+The listing below shows my implementation of the heading select mode design.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Heading select guidance mode and turn direction enum]
+public enum TurnDirection
+{
+    Left,
+    Right,
+    Quickest
+}
+
+public class HeadingSelect : LateralMode
+{
+    private float _selectedHeading;
+    private TurnDirection _turnDirection;
+
+    private float HeadingDelta(TurnDirection direction)
+    {
+        // Find the angle in degrees between the aircraft's current heading and the selected heading, assuming a turn in a given direction.
+        float headingDelta = direction == TurnDirection.Left ? _aeroplane.TrueHeading - _selectedHeading : _selectedHeading - _aeroplane.TrueHeading;
+        if (headingDelta < 0)
+        {
+            headingDelta += 360;
+        }
+        return headingDelta;
+    }
+
+    public override float RollCommand()
+    {
+        // If the difference between the current and selected heading is greater than that needed to roll out,
+        if (HeadingDelta(_turnDirection) > (_aeroplane.Roll / Aeroplane.RollRate) * _aeroplane.Roll + 0.01f)
+        {
+            // Command a standard rate turn in the appropriate direction
+            return _turnDirection == TurnDirection.Right ? Aeroplane.StandardRateTurn : -Aeroplane.StandardRateTurn;
+        }
+        else
+        {
+            return 0f;
+        }
+    }
+
+    public HeadingSelect(Aeroplane aeroplane, float heading, TurnDirection turnDirection)
+    {
+        _aeroplane = aeroplane;
+        _selectedHeading = heading;
+        if (turnDirection == TurnDirection.Quickest)
+        {
+            // Find which direction it would be quicker to turn in to reach the selected heading
+            _turnDirection = HeadingDelta(TurnDirection.Left) < HeadingDelta(TurnDirection.Right) ? TurnDirection.Left : TurnDirection.Right;
+        }
+        else
+        {
+            _turnDirection = turnDirection;
+        }
+    }
+}
+\end{lstlisting}
+
+\paragraph{Localizer}
+To implement this feature I started by creating a prototype in Julia, that allowed me to quickly adjust the PID controller parameters and see a plot of the result.
+\lstset{style=csharp, language=Julia}
+\begin{lstlisting}[label={lst:pidlocsim}, caption=PID Localizer Simulation test script]
+roll_rate = 0.5
+seconds_in_an_hour = 3600
+localiser_heading = 90
+
+aircraft = Aircraft(180, 130, 0, Point(-1, 0.3))
+controller = PIDController(15.5, 0, 200, 0, 0)
+
+for i in 0:(2 * 60 / delta)
+    deviation = deviation_feet(aircraft)
+    command = iterate(controller, delta, 0, deviation)
+    if abs(deviation) < 0.25
+        aircraft.roll = move_towards(aircraft.roll, command, roll_rate * delta)
+    end
+    aircraft.heading += aircraft.roll * delta;
+
+    air_vector = heading_to_vector(aircraft.heading) * aircraft.airspeed
+    wind_vector = heading_to_vector(180) * 0
+    ground_vector = (air_vector + wind_vector) / seconds_in_an_hour * delta
+    aircraft.position.x += ground_vector[1]
+    aircraft.position.y += ground_vector[2]
+end
+\end{lstlisting}
+Once I had confirmed this design, I created the localizer lateral guidance mode class.
+To increase the flexibility of the navigation system, I at this point enabled guidance modes to be armed and activated when their Activate method returns true.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Approach instruction receiver on Aeroplane class]
+private void OnApproachInstruction(int approach_index)
+{
+    Approach = Simulator.EnabledILSApproaches[approach_index];
+    ArmedLateralGuidanceModes.Add(new Localiser(this));
+    ArmedVerticalGuidanceModes.Add(new Glideslope(this));
+    GD.Print("Cleared ", Approach.ResourceName, " approach!");
+}
+\end{lstlisting}
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Localizer guidance mode class]
+public class Localiser : IArmableLateralMode
+{
+    private readonly Aeroplane _aeroplane;
+    private readonly PIDController _controller = new(15.5f, 0, 300);
+
+    private float Deviation()
+    {
+        ILSApproach approach = _aeroplane.Approach;
+        Vector2 locPosition = RelativePositionNm(approach.LocaliserLatLon, Simulator.RadarConfig.LatLon);
+        float distance = _aeroplane.PositionNm.DistanceTo(locPosition);
+        float bearing = Util.Bearing(_aeroplane.PositionNm, locPosition);
+        float angularDeviation = approach.LocaliserHeading - bearing;
+        float deviation = Mathf.Sin(Mathf.DegToRad(angularDeviation)) * distance;
+        return deviation;
+    }
+
+    public bool Activate()
+    {
+        return Mathf.Abs(Deviation()) < 0.25;
+    }
+
+    public float RollCommand(float delta)
+    {
+        return _controller.Iterate(delta, 0, Deviation());
+    }
+
+    public Localiser(Aeroplane aeroplane) => _aeroplane = aeroplane;
+}
+\end{lstlisting}
+
+\paragraph{Glideslope}
+Because it would be difficult to add the debugging features necessary to the main project, I chose to create a prototype python program, shown in Listing \ref{lst:pidilssim}, that would run a simplified simulation (using the only two dimensions which are important: distance from the transmitter and height) and allow me to more quickly iterate on the glideslope vertical mode design and see the result.
+I slightly changed the original design to only iterate the PID controller and start issuing commands once within a certain vertical deviation of the glideslope.
+
+\lstset{style=csharp, language=Python}
+\begin{lstlisting}[label={lst:pidilssim}, caption=PID ILS Simulation test script]
+controller = PIDController(0.02, -0.0005, 0.3)
+control = False
+
+for i in range(int((6 * 60) / DELTA)):
+    glideslope_height = np.absolute(distance) * NM_TO_FEET * maths.tan(maths.radians(glideslope_angle))
+    glideslope_deviation = height - glideslope_height
+
+    # Start controlling if within 250 feet of the glideslope
+    control += np.absolute(glideslope_deviation) < 250
+
+    if control:
+        fpa_command = controller.iterate(DELTA, 0, glideslope_deviation)
+    else:
+        fpa_command = 0
+
+    fpa = move_towards(fpa, fpa_command, PITCH_RATE * DELTA)
+    height += airspeed * maths.sin(maths.radians(fpa)) * KNOTS_TO_FPS * DELTA
+
+    # Update position
+    distance += airspeed * maths.cos(np.absolute(maths.radians(fpa))) / SECONDS_IN_AN_HOUR * DELTA
+
+    if height <= 30:
+        break
+\end{lstlisting}
+I used this program to easily generate plots of the aeroplane and the glideslope's height, and the commanded flight path angle, with respect to the aeroplane's distance from the glideslope transmitter.
+I tried tuning the PID controller parameters, but was never able to get it to reliably follow the glideslope, especially when testing with different glideslope angles and airspeeds.
+Figure \ref{fig:pidilssim} shows the result of a test with the best result I was able to achieve with this method, the blue curve on the vertical axes shows the FPA commanded at each point; the straight blue line is the glideslope; and the orange line is the aeroplane, which is seen to over and undershoot the glideslope.
+
+Therefore I created a new simpler design which would, based on the time necessary to pitch down to match the glideslope's angle, calculate the point at which to command pitch down in order to align with the glideslope's path.
+This involved changing lines 11 to 14 of Listing \ref{lst:pidilssim} to this:
+\lstset{style=csharp, language=Python}
+\begin{lstlisting}[label={lst:ilssim}, caption=ILS Simulation test script]
+if np.absolute(glideslope_deviation) * ( 1 / maths.tan(maths.radians(glideslope_angle))) < (0--glideslope_angle) / PITCH_RATE * airspeed * 0.845:
+    fpa_command = -glideslope_angle
+else:
+    fpa_command = 0
+\end{lstlisting}
+I tested this change with the aeroplane at different airspeeds and the glideslope at many angles and it was always able to perform perfectly, like shown in Figure \ref{fig:ilssim}.
+
+\begin{sidewaysfigure}
+    \includegraphics[width=\textwidth]{diagrams/pidilssim.png}
+    \caption{\label{fig:pidilssim}PID ILS Simulation}
+\end{sidewaysfigure}
+
+\begin{sidewaysfigure}
+    \includegraphics[width=\textwidth]{diagrams/ilssim.png}
+    \caption{\label{fig:ilssim}ILS Simulation}
+\end{sidewaysfigure}
+
+\clearpage
+
+I then created the Glideslope vertical guidance mode with this new design.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Glideslope vertical guidance mode]
+public class Glideslope : IArmableVerticalMode
+{
+    private readonly Aeroplane _aeroplane;
+
+    private float Deviation()
+    {
+        // Return vertical deviation from the glideslope in feet
+        ILSApproach approach = _aeroplane.Approach;
+        float distance = _aeroplane.PositionNm.DistanceTo(RelativePositionNm(approach.GlideslopeLatLon, Simulator.RadarConfig.LatLon));
+        float glideslopeHeight = distance * Aeroplane.NauticalMilesToFeet * Mathf.Tan(Mathf.DegToRad(approach.GlideslopeAngle)) + approach.GlideslopeElevation;
+        return _aeroplane.TrueAltitude - glideslopeHeight;
+    }
+
+    public bool Activate()
+    {
+        ILSApproach approach = _aeroplane.Approach;
+        // Calculate time to pitch down
+        float pitchTime = (_aeroplane.FlightPathAngle + approach.GlideslopeAngle) / Aeroplane.PitchRate * _aeroplane.TrueAirspeed * 0.845f;
+        float deviation = Deviation();
+        // Activate when pitching down to match the glideslope will align us with its path
+        // also check that we are below the glideslope
+        return Mathf.Abs(deviation) * (1 / Mathf.Tan(Mathf.DegToRad(approach.GlideslopeAngle))) < pitchTime && deviation < 0;
+    }
+
+    public float FlightPathAngleCommand()
+    {
+        return -_aeroplane.Approach.GlideslopeAngle;
+    }
+
+    public Glideslope(Aeroplane aeroplane) => _aeroplane = aeroplane;
+}
+\end{lstlisting}
+
+
+\subsection{Aeroplane interface}
+To implement this feature I first created a node as a child (sub) node of the root node in the Aeroplane scene in Godot (Figure \ref{fig:scenetree} shows the final state of this scene), with the script shown in Listing \ref{lst:aeroplanedisplay}.
+Rather than the root node being moved, this node will move itself with the correct scaling on the screen and all subcomponents such as the blip and leader line will be child nodes of it so that they do not need to manage their own position.
+This also implements the design for the actual position of the aeroplane to be separated from the display position.
+DisplayUpdateTimeout is a function I configured Godot to call every 4 seconds with the DisplayUpdateTimer node.
+I also call the Update function from the Ready function which Godot calls when the node first appears so that when an aeroplane is newly added to the screen, it does not wait until the first display update from the timer to move to the correct position; this was a problem I noticed when first testing it.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{screenshots/tree.png}
+\caption{\label{fig:scenetree}Aeroplane scene tree}
+\end{figure}
+\lstset{style=csharp}
+\begin{lstlisting}[label={lst:aeroplanedisplay},caption=Aeroplane display script]
+public partial class AeroplaneDisplay : Node2D
+{
+    [Export] public Aeroplane Aeroplane;
+    private Vector2 _displayPositionNm;
+
+    private void Update()
+    {
+        // Sync position with aeroplane
+        _displayPositionNm = Aeroplane.PositionNm;
+    }
+
+    public void DisplayUpdateTimeout()
+    {
+        // Update on the timeout of the display update timer
+        Update();
+    }
+
+    public override void _Ready()
+    {
+        Update();
+    }
+
+    public override void _Process(double delta)
+    {
+        // Set position based on last known aeroplane position
+        Position = Simulator.ScaledPosition(_displayPositionNm, GetViewportRect());
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Leader line}\label{leaderline}
+To implement this feature I created a node in the aeroplane scene as a child of the display node with the script below.
+Godot calls the draw function when the texture needs to be updated.
+To re-draw the line every frame so that it always shows the current heading I needed to tell Godot to execute the draw function again in an override of the Process function which is called every frame by Godot.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Leader line script]
+public partial class LeaderLine : Node2D
+{
+    [Export] private Aeroplane _aeroplane;
+
+    [Export] private Color _colour;
+    [Export] private int _start = 10;
+    [Export] private int _length = 40;
+
+    private Vector2 screenVelocity;
+
+    public override void _Draw()
+    {
+        // Invert the y-axis of the aeroplane's movement because the display uses an inverted y-axis
+        screenVelocity = new Vector2(_aeroplane.GroundVector.X, -_aeroplane.GroundVector.Y);
+        // Draw the line
+        Vector2 direction = screenVelocity.Normalized();
+        Vector2 start = Position + direction * _start;
+        Vector2 end = start + direction * _length;
+        DrawLine(start, end, _colour, -1, true);
+    }
+
+    public override void _Process(double delta)
+    {
+        QueueRedraw();
+    }
+}
+\end{lstlisting}
+
+The figure below shows this working, with the aeroplane on a heading of 55 degrees. I tested this further by changing the heading, and it rotated appropriately.
+\begin{figure}[H]
+\centering
+\includegraphics[]{screenshots/leaderline.png}
+\caption{\label{fig:leaderline}Leader line}
+\end{figure}
+
+After I implemented the heading instruction, I wanted the leader line to only update at the same time as the position of the aeroplane, so I changed it to be linked to the same timer rather than re-drawing every frame. The figure below replaced lines 22 to 25 of the leader line script shown above.
+
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Updating the leader line on a timer]
+public void DisplayUpdateTimeout()
+{
+    QueueRedraw();
+}
+\end{lstlisting}
+
+\subsubsection{The tag}\label{thetag}
+In Godot, nodes are arranged to create a user interface.
+The LineEdit node provides an input box and I have used it for each value on the tag.
+Figure \ref{fig:tagtree} shows the final state of the scene tree of child nodes under the display node in the aeroplane scene.
+
+In the script for each input field, the OnChanged function is called by Godot when the text is edited and OnSubmitted when the enter key is pressed.
+Instructions are passed from the tag to the Aeroplane script on the root node of the scene with Godot's signals, which are essentially events which are connected between two scripts, defined using the keyword "[Signal]" in code.
+I chose to use them because they are the best way of communicating between two separated modules.
+I have given all input fields this code that de-focuses them when the user clicks away.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Input field de-focus event]
+public override void _Input(InputEvent @event)
+{
+    // If the left mouse button is pressed outside of the field, de-focus it
+    if (@event is InputEventMouseButton eventMouseButton)
+        if (eventMouseButton.ButtonIndex == MouseButton.Left && eventMouseButton.Pressed == true)
+            if (!GetRect().HasPoint(((InputEventMouseButton)MakeInputLocal(eventMouseButton)).Position))
+                ReleaseFocus();
+}
+\end{lstlisting}
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{screenshots/tagtree.png}
+\caption{\label{fig:tagtree}Aeroplane tag scene tree}
+\end{figure}
+
+
+\paragraph{Heading field}
+I initially implemented the heading field as below:
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Heading field script]
+public partial class HeadingField : LineEdit
+{
+    [Signal] public delegate void HeadingInstructionEventHandler(int heading, int turnDirection);
+
+    public void OnChanged(string newText)
+    {
+        // Make all text entered uppercase
+        int oldCaretColumn = CaretColumn;
+        Text = newText.ToUpper();
+        CaretColumn = oldCaretColumn;
+    }
+
+    public void OnSubmitted(string newText) 
+    {
+        // If the text entered is a valid number
+        if (newText.IsValidInt())
+        {
+            EmitSignal(nameof(HeadingInstruction), newText.ToInt(), (int)Guidance.TurnDirection.Quickest);
+            Text = newText.PadLeft(3, '0');
+        }
+        // If the first character is L and the rest is a valid number
+        else if (newText[0] == 'L' && newText.Substring(1).IsValidInt())
+        {
+            EmitSignal(nameof(HeadingInstruction), newText.Substring(1).ToInt(), (int)Guidance.TurnDirection.Left);
+            Text = newText.Substring(1).PadLeft(3, '0');
+        }
+        // If the first character is R and the rest is a valid number
+        else if (newText[0] == 'R' && newText.Substring(1).IsValidInt())
+        {
+            EmitSignal(nameof(HeadingInstruction), newText.Substring(1).ToInt(), (int)Guidance.TurnDirection.Right);
+            Text = newText.Substring(1).PadLeft(3, '0');
+        }
+
+        ReleaseFocus();
+    }
+}
+\end{lstlisting}
+I tested this with many input values as described in the design section and it worked as intended.
+
+Then while adding the direct to waypoint navigation functionality, I added another condition to the if statement in OnSubmitted allowing the user to issue direct to instructions through the heading field by entering just its name.
+At the same time I developed the feature further by making it so that the text in the input box reverts to the last valid input when entering invalid input, which I replicated across all other text input fields on the tag.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Heading field script]
+// If the entered text is the name of a waypoint
+else if (Simulator.Waypoints.ContainsKey(newText))
+{
+    EmitSignal(nameof(DirectInstruction), newText);
+    _oldText = Text;
+}
+else
+{
+    // Cancel changes
+    Text = _oldText;
+}
+\end{lstlisting}
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Input field de-focus and canceling changes]
+public override void _Input(InputEvent @event)
+{
+    // If the left mouse button is pressed outside of the field, de-focus it and cancel changes
+    if (@event is InputEventMouseButton eventMouseButton)
+    {
+        if (eventMouseButton.ButtonIndex == MouseButton.Left && eventMouseButton.Pressed == true)
+        {
+            if (!GetRect().HasPoint(((InputEventMouseButton)MakeInputLocal(eventMouseButton)).Position))
+            {
+                ReleaseFocus();
+                // Cancel changes
+                Text = _oldText;
+            }
+        }
+    }    
+}
+\end{lstlisting}
+
+\paragraph{Altitude field}
+Below is the implementation of the altitude field.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Altitude field script]
+public partial class AltitudeField : LineEdit
+{
+    [Signal] public delegate void AltitudeInstructionEventHandler(int altitude);
+
+    public void OnSubmitted(string newText) 
+    {
+        // If the text entered is a valid integer, send an instruction using that value
+        if (newText.IsValidInt())
+        {
+            EmitSignal(nameof(AltitudeInstruction), newText.ToInt() * 100);
+            Text = newText.PadLeft(3, '0');
+            _oldText = Text;
+        }
+        else
+        {
+            // Cancel changes
+            Text = _oldText;
+        }
+
+        ReleaseFocus();
+    }
+}
+\end{lstlisting}
+
+\paragraph{Speed field}
+Below is the implementation of the speed field.
+With this I made the addition to the design of some fields not showing unless the user hovers the mouse over the tag, because there became too many fields to show all at once.
+This can be seen in the Process function.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Speed field script]
+public partial class SpeedField : LineEdit
+{
+    [Signal] public delegate void SpeedInstructionEventHandler(int speed);
+
+    [Export] private Tag _tag;
+    private string _oldText = "";
+
+    public void OnSubmitted(string newText)
+    {
+        // If just a number is entered e.g. 180,250
+        if (newText.IsValidInt())
+        {
+            int speed = newText.ToInt();
+            // If value is within a valid range
+            if (speed > 0 && speed < 350)
+            {
+                EmitSignal(nameof(SpeedInstruction), speed);
+                Text = newText.PadLeft(3, '0');
+                _oldText = Text;
+            }
+        }
+        else
+        {
+            // Cancel changes
+            Text = _oldText;
+        }
+
+        ReleaseFocus();
+    }
+
+    public override void _Process(double delta)
+    {
+        // Hide this button if the tag isn't hovered
+        if (_tag.Hovering)
+        {
+            Show();
+        }
+        else
+        {
+            Hide();
+        }
+    }
+}
+\end{lstlisting}
+
+\paragraph{Approach selector}
+Only during development I finalized the idea of how to fulfil the criterion of being able to give instructions to fly \acrshort{ils} approaches, and found the additional requirement of being able to cancel this instruction.
+I decided to use a dropdown populated with all the enabled approaches, where selecting one from the dropdown would issue an instruction to fly that approach and selecting the first option in the dropdown which would always be text reading "Cancel" or "Unset", would cancel it.
+\lstset{style=csharp}
+\begin{lstlisting}[caption=Approach selector script]
+public partial class ApproachSelector : OptionButton
+{
+    [Signal] public delegate void ApproachInstructionEventHandler(int approach_index);
+    [Signal] public delegate void CancelApproachInstructionEventHandler();
+
+    [Export] public Aeroplane Aeroplane;
+    [Export] private Tag _tag;
+
+    public void OnItemSelected(int index)
+    {
+        ReleaseFocus();
+
+        if (index != 0)
+        {
+            // If selecting an approach (the unset/cancel option will be index 0),
+            // send the approach instruction with selected index
+            EmitSignal(nameof(ApproachInstruction), index - 1);
+            SetItemText(0, "Cancel");
+        }
+        else
+        {
+            // If the cancel option was selected, send the cancel approach instruction
+            EmitSignal(nameof(CancelApproachInstruction));
+            SetItemText(0, "Unset");
+        }
+    }
+
+    public void Populate()
+    {
+        // Remove all existing dropdown items apart from the first
+        Clear();
+        AddItem("Unset");
+        // Add dropdown items for enabled approaches
+        foreach (ILSApproach approach in Simulator.EnabledILSApproaches)
+        {
+            AddItem(approach.ResourceName);
+        }
+    }
+
+    public void OnEnabledApproachesChanged()
+    {
+        Populate();
+    }
+
+    public override void _Ready()
+    {
+        Hide();
+        Populate();
+        GetNode<EnabledApproachesMenu>("/root/Root/CanvasLayer/Enabled Approaches Menu Container/Enabled Approaches Menu").EnabledApproachesChanged += OnEnabledApproachesChanged;
+    }
+
+    public override void _Process(double delta)
+    {
+        // Hide this button if the tag isn't hovered
+        if (_tag.Hovering)
+        {
+            Show();
+        }
+        else
+        {
+            Hide();
+        }
+    }
+}
+\end{lstlisting}
 
 \clearpage
 \section{Evaluation}
 \subsection{Function and robustness testing}
+The following videos show post-development testing of different elements of the solution.
+They may be available attached with this document or via this URL: \url{https://youtube.com/playlist?list=PL8BpXAoinD3L1gilyLGS843vTGpgq36oc}.
+
+
+\subsection{Usability and end-user testing}
+To test the usability of my solution, I gave it to my stakeholder Freddy to try:
+\begin{itemize}
+    \item When asked if the tag system of the aeroplanes was intuitive to use he said "Yeah I like the tags." but pointed out the issue that it is not possible to write an instruction in multiple different boxes and then press enter once to send all of them.
+    This indicates the usability of the tags is generally positive.
+    \item When asked about the realism compared to other simulators he stated "It's very realistic. It's hard to describe, but it feels good and acts really well"
+\end{itemize}
+
+
+\subsection{Success criteria}
+\subsubsection{Simulated aeroplanes}
+\begin{table}[ht]
+\centering
+\begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
+\hline
+\textbf{Success criterion} & \textbf{Met?} & \textbf{Evidence} \\
+\hline
+The aeroplane should be able to guide itself realistically in following instructions & Yes & Videos two and three \\
+\hline
+The aeroplane should take a realistic amount of time to change altitude and heading & Yes & Video two \\
+\hline
+The aeroplane's course should be accurately affected by wind & Yes & Section \ref{physicssimulation} \\
+\hline
+Fifteen or more aeroplanes should be able to be simulated simultaneously & Yes & Number exceeded greatly in video two \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Aeroplane instructions}\label{aeroplaneinstructionssuccess}
+\begin{table}[ht]
+\centering
+\begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
+\hline
+\textbf{Success criterion} & \textbf{Met?} & \textbf{Evidence} \\
+\hline
+Should function concurrently with the simulation of the aeroplane & Yes & All videos show that one does not interrupt the other \\
+\hline
+Should allow the user to give instructions as quickly as they would
+be able to verbally in real life & Yes & Videos show that it takes less than half the time \\
+\hline
+To make the experience more fluid, it should require as few button presses or mouse
+clicks as possible & Partly & Videos demonstrate that one click, some typing, and a button press is required \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Displaying aeroplanes}\label{aeroplanedisplaysuccess}
+\begin{table}[ht]
+\centering
+\begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
+\hline
+\textbf{Success criterion} & \textbf{Met?} & \textbf{Evidence} \\
+\hline
+The assigned heading or waypoint, altitude, and speed; current heading or targeted waypoint, altitude, speed, and callsign should be displayed & Partly & Videos show that current speed is not shown, heading by leader line \\
+\hline
+Properties should update at a realistic rate: position every 4 seconds, and others at around
+every 0.5 seconds & Yes & Videos show this \\
+\hline
+Every time the position updates, a history dot should be created up to a specified number,
+and they should then follow behind & Yes & Videos show this \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Traffic Simulation}
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{screenshots/schiphol2.png}
-\caption{\label{fig:schiphol}A screenshot of the simulation showing Schiphol airport}
+\begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
+\hline
+\textbf{Success criterion} & \textbf{Met?} & \textbf{Evidence} \\
+\hline
+Aeroplanes should enter the user's area of responsibility periodically from certain waypoints & Yes & Videos one and three show this \\
+\hline
+Aeroplanes should appear on the screen after taking off from a runway periodically & Yes & Shown in video two \\
+\hline
+\end{tabular}
 \end{figure}
-Figure \ref{fig:schiphol} shows multiple features of the solution being tested and functioning correctly with a full set of real world data.
-You can see the waypoints, coastline, extended centreline, and the aeroplanes all displaying correctly.
 
+\subsubsection{Waypoints}
+\begin{table}[ht]
+\centering
+\begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
+\hline
+\textbf{Success criterion} & \textbf{Met?} & \textbf{Evidence} \\
+\hline
+Should appear in the correct position on the screen & Yes & All videos show this, can be seen in relation to terrain \\
+\hline
+Their name should be shown next to an icon which changes based on the type of waypoint & Yes & Videos show this \\
+\hline
+Their name should be shown next to an icon which changes based on the type of waypoint & Yes & Videos show this \\
+\hline
+\end{tabular}
+\end{table}
 
-\subsection{Usability testing}
-I gave it to my stakeholder Freddy.
+\subsubsection{Pan and zoom}
+\begin{figure}[H]
+\centering
+\begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
+\hline
+\textbf{Success criterion} & \textbf{Met?} & \textbf{Evidence} \\
+\hline
+Panning and zooming should be smooth & Yes & Shown in video one \\
+\hline
+It should occur at a fixed speed and in fixed steps & Yes & Shown in video one \\
+\hline
+The camera should zoom towards the centre of the screen & Yes & Shown in video one \\
+\hline
+\end{tabular}
+\end{figure}
+
+\subsubsection{Geographical features}
+\begin{figure}[H]
+\centering
+\begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
+\hline
+\textbf{Success criterion} & \textbf{Met?} & \textbf{Evidence} \\
+\hline
+An abstraction of the terrain should be displayed & Yes & Shown in videos \\
+\hline
+It should appear accurate, having the correct proportions and with no breaks in lines & Yes & Shown in videos \\
+\hline
+It should respect the current scale of the display & Yes & Shown in videos \\
+\hline
+\end{tabular}
+\end{figure}
+
+\subsubsection{Extended centrelines}
+\begin{figure}[H]
+\centering
+\begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
+\hline
+\textbf{Success criterion} & \textbf{Met?} & \textbf{Evidence} \\
+\hline
+The line should be in the correct position and direction & Yes & Shown in videos and compared to map \\
+\hline
+Distance markings should be shown at the correct intervals & Yes & Shown in videos in relation to terrain \\
+\hline
+\end{tabular}
+\end{figure}
 
 
 \subsection{Improvements to address unmet success criteria}
+To address the partly met criterion in section \ref{aeroplaneinstructionssuccess}, I could implement the suggestion of my stakeholder to allow the user to click on an input box, and then use one button press to switch to another input box, entering a value into both, pressing enter once and both instructions being submitted.
+This would save a lot of unnecessary mouse movements going back to each input box individually.
+
+To address the partly met criterion in section \ref{aeroplanedisplaysuccess}, I could add another label on the tag showing the current speed, or come up with some other system for showing the current speed when not editing the input box.
+However, through testing I have found that this is not necessary or realistic.
 
 
 \subsection{Maintenance and limitations}
@@ -1058,6 +2114,17 @@ The way I have developed my solution has resulted in a very maintainable system.
 This is mainly because the components of the solution are largely decoupled from one another, because having to make changes in many areas to implement one feature is the biggest contributor to low maintainability.
 Most features are separated out into separate scripts which are in a well organized directory structure.
 Variables and classes have all been named well and comments used to annotate the purpose of sections of code.
+
+While there are limitations to the solution in some areas, such as only being able to control at one airport at a time, it makes up for this by improving realism in other areas such as the detail of the terrain and the aeroplane tags.
+Another limitation arising from the development is that end users cannot create their own airport configurations, they have to be added by the author and are linked to the executable, at the moment I have only provided one airport.
+Endless ATC for example does allow users to do create their own airport configurations.
+
+\subsection{Potential improvements}
+\begin{itemize}
+    \item Instructions where an aircraft can be instructed to for example fly on a specific heading upon reaching a waypoint could be added
+    \item Other input methods could be added to meet the preferences of different users, such as voice recognition
+    \item Live or historical data for actual traffic volume at an airport could be used rather than fixed timers
+\end{itemize}
 
 \clearpage
 

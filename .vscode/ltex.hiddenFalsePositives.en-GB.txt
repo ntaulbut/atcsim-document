@@ -41,3 +41,12 @@
 {"rule":"COMMA_COMPOUND_SENTENCE_2","sentence":"^\\QBecause the distance will always be positive, the \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q the point lies in relative to the screen centre must be determined and the sign flipped accordingly for it to be a coordinate.\\E$"}
 {"rule":"COMMA_COMPOUND_SENTENCE_2","sentence":"^\\QBecause the distance will always be positive, the \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q the point lies in relative to the reference point must be determined and the sign flipped accordingly for it to be a coordinate.\\E$"}
 {"rule":"COMMA_COMPOUND_SENTENCE_2","sentence":"^\\QBecause the distance will always be positive, the \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q the point lies in relative to the reference point must be determined and the sign flipped accordingly.\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qstyle=csharp, language=Python this doesn't work.\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qstyle=csharp, language=Python I used this program to easily generate graphs of the test aircraft and the glideslope's height, the position of the glideslope, and the commanded flight path angle, with respect to the aeroplane's distance from the glideslope transmitter.\\E$"}
+{"rule":"COMMA_COMPOUND_SENTENCE","sentence":"^\\QThis involved changing lines 11 to 14 of Listing \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q to this: style=csharp, language=Python I tested this change with the aeroplane at different airspeeds and the glideslope at many angles and it was always able to perform perfectly, like shown in Figure \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q.\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qstyle=csharp I chose to implement the heading select mode first because it is one of the most fundamental.\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qstyle=csharp Aeroplane tag scene tree\\E$"}
+{"rule":"COMMA_COMPOUND_SENTENCE","sentence":"^\\QI initially implemented the heading field as below: style=csharp I tested this with many input values as described in the design section and it worked as intended.\\E$"}
+{"rule":"UPPERCASE_SENTENCE_START","sentence":"^\\Qstyle=csharp style=csharp\\E$"}
+{"rule":"COMMA_COMPOUND_SENTENCE","sentence":"^\\Qstyle=csharp Waypoints scene tree in the gameplay scene To test this I compared the result with maps of the waypoints and they all appeared in the correct places, and stayed in the correct places when zooming in and out.\\E$"}
+{"rule":"WHITESPACE_RULE","sentence":"^\\QPrepared in \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q — This revision:  7\\E$"}
