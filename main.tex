@@ -107,7 +107,7 @@
 % Title
 \title{Air Traffic Control Simulator: OCR GCE A Computer Science Project}
 \author{Nathaniel Taulbut}
-\date{\today}
+\date{31st March 2023}
 
 % Glossary
 \makenoidxglossaries
@@ -152,7 +152,6 @@
 
 % Table of contents
 \tableofcontents
-\clearpage
 
 % List of figures and listings
 \listoffigures
@@ -1955,6 +1954,12 @@ public partial class ApproachSelector : OptionButton
 
 \clearpage
 \section{Evaluation}
+Overall the project has been successful.
+The Godot engine proved to be a good choice and my stakeholder has given promising feedback.
+The solution has been designed in such a way that adding new features is as easy as possible, so further improvements and expansions can easily be made.
+Complete source code is available at \url{https://github.com/ntaulbut/atcsim}.
+The use of Git versioning has been very valuable in maintaining the solution and this document.
+
 \subsection{Function and robustness testing}
 The following videos show post-development testing of different elements of the solution.
 They may be available attached with this document or via this URL: \url{https://youtube.com/playlist?list=PL8BpXAoinD3L1gilyLGS843vTGpgq36oc}.
@@ -1964,14 +1969,15 @@ They may be available attached with this document or via this URL: \url{https://
 To test the usability of my solution, I gave it to my stakeholder Freddy to try:
 \begin{itemize}
     \item When asked if the tag system of the aeroplanes was intuitive to use he said "Yeah I like the tags." but pointed out the issue that it is not possible to write an instruction in multiple different boxes and then press enter once to send all of them.
-    This indicates the usability of the tags is generally positive.
-    \item When asked about the realism compared to other simulators he stated "It's very realistic. It's hard to describe, but it feels good and acts really well"
+    This indicates the usability of the tags is generally successful.
+    \item When asked about the realism compared to other simulators he stated "It's very realistic. It's hard to describe, but it feels good and acts really well".
+    This indicates the project has accomplished the primary goal of improving on existing solutions.
 \end{itemize}
 
 
 \subsection{Success criteria}
 \subsubsection{Simulated aeroplanes}
-\begin{table}[ht]
+\begin{figure}[H]
 \centering
 \begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
 \hline
@@ -1986,10 +1992,10 @@ The aeroplane's course should be accurately affected by wind & Yes & Section \re
 Fifteen or more aeroplanes should be able to be simulated simultaneously & Yes & Number exceeded greatly in video two \\
 \hline
 \end{tabular}
-\end{table}
+\end{figure}
 
 \subsubsection{Aeroplane instructions}\label{aeroplaneinstructionssuccess}
-\begin{table}[ht]
+\begin{figure}[H]
 \centering
 \begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
 \hline
@@ -2004,10 +2010,10 @@ To make the experience more fluid, it should require as few button presses or mo
 clicks as possible & Partly & Videos demonstrate that one click, some typing, and a button press is required \\
 \hline
 \end{tabular}
-\end{table}
+\end{figure}
 
 \subsubsection{Displaying aeroplanes}\label{aeroplanedisplaysuccess}
-\begin{table}[ht]
+\begin{figure}[H]
 \centering
 \begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
 \hline
@@ -2022,7 +2028,7 @@ Every time the position updates, a history dot should be created up to a specifi
 and they should then follow behind & Yes & Videos show this \\
 \hline
 \end{tabular}
-\end{table}
+\end{figure}
 
 \subsubsection{Traffic Simulation}
 \begin{figure}[H]
@@ -2039,7 +2045,7 @@ Aeroplanes should appear on the screen after taking off from a runway periodical
 \end{figure}
 
 \subsubsection{Waypoints}
-\begin{table}[ht]
+\begin{figure}[H]
 \centering
 \begin{tabular}{| p{0.5\textwidth} | p{0.075\textwidth} | p{0.3\textwidth} |}
 \hline
@@ -2052,7 +2058,7 @@ Their name should be shown next to an icon which changes based on the type of wa
 Their name should be shown next to an icon which changes based on the type of waypoint & Yes & Videos show this \\
 \hline
 \end{tabular}
-\end{table}
+\end{figure}
 
 \subsubsection{Pan and zoom}
 \begin{figure}[H]
@@ -2137,8 +2143,6 @@ Endless ATC for example does allow users to do create their own airport configur
 
 % Appendices
 \begin{appendices}
-\section{Other Code}\label{appendix:otherfunctions}
-
 
 \section{Other Images}\label{appendix:otherimages}
 \begin{figure}[H]
